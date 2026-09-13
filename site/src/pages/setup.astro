@@ -1,0 +1,124 @@
+---
+import Base from "../layouts/Base.astro";
+import Support from "../components/Support.astro";
+import { DOWNLOAD_APK, DOWNLOAD_COMPANION, DOWNLOAD_SUMS, RELEASES, VIGEM } from "../consts";
+---
+
+<Base
+  title="Setup guide"
+  description="Install PhonePad on Windows and Android, pair the two, and start playing. Takes about five minutes, most of it a one-time driver install."
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">Getting PhonePad working</h1>
+      <p class="lede">
+        About five minutes, most of it a one-time driver install. You need a
+        Windows PC and an Android phone on the same Wi-Fi network.
+      </p>
+
+      <h2>1. Install the ViGEmBus driver</h2>
+      <p>
+        Windows will not let a normal program invent a controller out of
+        nothing. ViGEmBus is the driver that makes it possible — the same one
+        Parsec and DS4Windows use. You install it once and never think about it
+        again.
+      </p>
+      <p>
+        <a class="btn btn-ghost" href={VIGEM} rel="noopener">
+          Download ViGEmBus 1.22.0
+        </a>
+      </p>
+      <p class="small muted">
+        Grab <code>ViGEmBus_1.22.0_x64_x86_arm64.exe</code> from that page and
+        run it. A reboot is not usually needed.
+      </p>
+
+      <h2>2. Run the PhonePad companion</h2>
+      <p>
+        Download <code>PhonePad-Companion.exe</code> and run it. There is no
+        installer: it is one self-contained program, and deleting it uninstalls
+        it.
+      </p>
+      <p>
+        <a class="btn btn-primary" href={DOWNLOAD_COMPANION} rel="noopener">
+          Download the Windows companion
+        </a>
+      </p>
+      <p class="small muted">
+        Windows SmartScreen may warn about an unrecognised publisher the first
+        time; the companion is not code-signed. Checksums for every file are in
+        <a href={DOWNLOAD_SUMS} rel="noopener">SHA256SUMS.txt</a> on the
+        <a href={RELEASES} rel="noopener">release page</a>.
+      </p>
+      <p>
+        Windows will ask whether to allow it through the firewall. Say
+        <strong>yes for private networks</strong> — PhonePad only ever talks to
+        your own network, and blocking it means your phone can never find your
+        PC. If you clicked the wrong thing, there is an
+        <em>Add firewall rule</em> button under <em>Advanced</em> in the
+        companion window.
+      </p>
+      <p>
+        You should now see <strong>Waiting for your phone</strong> and a
+        six-digit pairing code.
+      </p>
+
+      <h2>3. Install the app</h2>
+      <p>
+        Download <code>PhonePad-arm64.apk</code> onto the phone and open it.
+        Android will warn you about installing from an unknown source and ask
+        you to allow it for your browser or file manager. That warning is what
+        Android says about any app not distributed through the Play Store;
+        PhonePad is not on the Play Store.
+      </p>
+      <p>
+        <a class="btn btn-primary" href={DOWNLOAD_APK} rel="noopener">
+          Download the Android app
+        </a>
+      </p>
+
+      <h2>4. Pair, once</h2>
+      <p>
+        Open PhonePad. Your PC appears within a second or two. Tap it, type the
+        six digits shown on the PC, and you are on the controller.
+      </p>
+      <p>
+        That code is used once, to establish a key the two devices keep. From
+        then on, opening the app and tapping your PC goes straight through — no
+        code, no IP addresses, nothing to remember.
+      </p>
+
+      <h2>5. Check Windows agrees</h2>
+      <p>
+        Press <kbd>Win</kbd>+<kbd>R</kbd>, type <code>joy.cpl</code>, press
+        Enter. You should see <em>Xbox 360 Controller for Windows</em>. Open its
+        properties and the buttons and axes should light up as you touch the
+        phone.
+      </p>
+      <p>
+        If that works, every XInput game on the machine will see the pad. There
+        is nothing to configure per game.
+      </p>
+
+      <hr />
+
+      <h2>Playing cloud games</h2>
+      <p>
+        Xbox Cloud Gaming works, with one thing to know:
+        <strong>launch the game first, then hold the XBOX button on the phone</strong>.
+        There is a real reason for it, explained in
+        <a href="/xbox-cloud-gaming-phone-controller/">the cloud gaming guide</a>.
+      </p>
+
+      <h2>If something is wrong</h2>
+      <p>
+        The <a href="/troubleshooting/">troubleshooting page</a> covers what
+        actually goes wrong, in roughly the order it goes wrong.
+      </p>
+
+      <div style="margin-top:3rem">
+        <Support />
+      </div>
+    </div>
+  </section>
+</Base>

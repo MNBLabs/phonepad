@@ -1,0 +1,481 @@
+/*
+ * The design system, as CSS. Values come from docs/design.md; the app has the
+ * same numbers in theme.dart and the companion in brand.rs. If this file and
+ * that document disagree, this file is wrong.
+ *
+ * One ground for the site: paper. The controller, wherever it appears, brings
+ * its own night with it.
+ */
+
+@font-face {
+  font-family: "Bricolage";
+  src: url("/fonts/Bricolage-Regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage";
+  src: url("/fonts/Bricolage-Medium.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage";
+  src: url("/fonts/Bricolage-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage Display";
+  src: url("/fonts/BricolageDisplay-SemiBold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Bricolage Display";
+  src: url("/fonts/BricolageDisplay-ExtraBold.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  --paper: #f7f7fc;
+  --raised: #ffffff;
+  --sunken: #eeedf7;
+  --line: #e2e1ee;
+
+  --ink: #15142b;
+  --ink2: #5a5878;
+  --ink3: #807ea0;
+
+  --brand: #8178ff;
+  --accent: #5a4fe6;
+  --accent-deep: #4a40d4;
+  --good: #177f4a;
+  --warn: #935b00;
+  --bad: #c43837;
+
+  --night: #0b0b14;
+  --night-hi: #15152a;
+  --night-line: #24243c;
+
+  /* The light. The three stops of the brand gradient, used only where the
+     mark lives. */
+  --light-1: #ffe99e;
+  --light-2: #8178ff;
+  --light-3: #ff009b;
+
+  --measure: 68ch;
+  --page: 1120px;
+
+  --r-l: 24px;
+  --r-m: 14px;
+  --r-s: 8px;
+
+  --beat: 200ms cubic-bezier(0.23, 1, 0.32, 1);
+  --shadow: 0 12px 32px -12px rgba(21, 20, 43, 0.28);
+
+  --sans: "Bricolage", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, sans-serif;
+  --display: "Bricolage Display", "Bricolage", ui-sans-serif, system-ui,
+    sans-serif;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 17px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "tnum" 0;
+}
+
+/* The parts nobody draws still carry the design. */
+::selection {
+  background: rgba(129, 120, 255, 0.28);
+  color: var(--ink);
+}
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+html {
+  scrollbar-color: var(--ink3) transparent;
+  scrollbar-width: thin;
+}
+
+.wrap {
+  width: 100%;
+  max-width: var(--page);
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+.prose {
+  max-width: var(--measure);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--display);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.5em;
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: clamp(2.4rem, 6vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+}
+h2 {
+  font-size: clamp(1.7rem, 3.4vw, 2.3rem);
+  margin-top: 2.4em;
+}
+h3 {
+  font-size: 1.2rem;
+  margin-top: 2em;
+}
+
+p,
+ul,
+ol {
+  margin: 0 0 1.1em;
+}
+
+a {
+  color: var(--accent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  text-decoration-color: rgba(90, 79, 230, 0.4);
+}
+a:hover {
+  color: var(--accent-deep);
+  text-decoration-color: currentColor;
+}
+
+strong {
+  font-weight: 600;
+}
+
+code {
+  font-family: var(--sans);
+  font-weight: 500;
+  font-size: 0.94em;
+  background: var(--sunken);
+  border-radius: 5px;
+  padding: 0.12em 0.4em;
+}
+
+pre {
+  background: var(--night);
+  color: #f3f2ff;
+  border-radius: var(--r-m);
+  padding: 16px 18px;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  font-family: ui-monospace, "Cascadia Mono", Consolas, Menlo, monospace;
+}
+pre code {
+  background: none;
+  padding: 0;
+  font: inherit;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 3rem 0;
+}
+
+figure {
+  margin: 0;
+}
+figcaption {
+  font-size: 0.9rem;
+  color: var(--ink2);
+  margin-top: 12px;
+  line-height: 1.5;
+}
+
+/* --- controls ------------------------------------------------------------ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 50px;
+  padding: 0 24px;
+  border-radius: 999px;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 1rem;
+  text-decoration: none;
+  border: 1.5px solid transparent;
+  cursor: pointer;
+  transition: background var(--beat), border-color var(--beat),
+    transform 120ms cubic-bezier(0.23, 1, 0.32, 1), color var(--beat);
+  white-space: nowrap;
+}
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+}
+.btn-primary:hover {
+  background: var(--accent-deep);
+  color: #fff;
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  color: var(--ink);
+  background: transparent;
+}
+.btn-ghost:hover {
+  border-color: var(--ink3);
+  color: var(--ink);
+  background: var(--raised);
+}
+
+.lede {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  color: var(--ink2);
+  max-width: 58ch;
+  text-wrap: pretty;
+}
+
+.muted {
+  color: var(--ink2);
+}
+.small {
+  font-size: 0.92rem;
+}
+
+/* --- structure ----------------------------------------------------------- */
+
+section {
+  padding-block: clamp(3.5rem, 8vw, 6rem);
+}
+
+.grid {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+/* A raised panel: white on paper, hairline, no shadow. Only for something
+   that is a real object on the page, never as a way to group text. */
+.card {
+  background: var(--raised);
+  border: 1px solid var(--line);
+  border-radius: var(--r-m);
+  padding: 24px;
+}
+.card h3 {
+  margin-top: 0;
+  font-size: 1.1rem;
+}
+.card p:last-child {
+  margin-bottom: 0;
+}
+
+/* Rows separated by hairlines. The default way to list things here. */
+.rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.rows > li {
+  padding: 22px 0;
+  border-top: 1px solid var(--line);
+}
+.rows > li:last-child {
+  border-bottom: 1px solid var(--line);
+}
+.rows h3 {
+  margin: 0 0 6px;
+  font-size: 1.15rem;
+}
+.rows p {
+  margin: 0;
+  color: var(--ink2);
+}
+
+.figures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 40px;
+  padding: 22px 0;
+  border-block: 1px solid var(--line);
+  font-size: 1rem;
+  color: var(--ink2);
+}
+.figures b {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-feature-settings: "tnum" 1;
+  white-space: nowrap;
+  margin-right: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.96rem;
+  margin-bottom: 1.4em;
+  font-feature-settings: "tnum" 1;
+}
+th,
+td {
+  text-align: left;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--line);
+}
+th {
+  color: var(--ink2);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+
+/* --- header and footer --------------------------------------------------- */
+
+header.site {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: rgba(247, 247, 252, 0.86);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--line);
+}
+header.site .wrap {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  height: 64px;
+}
+header.site nav {
+  display: flex;
+  gap: 24px;
+  margin-left: auto;
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+header.site nav a {
+  color: var(--ink2);
+  text-decoration: none;
+}
+header.site nav a:hover,
+header.site nav a[aria-current="page"] {
+  color: var(--ink);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 1.2rem;
+}
+.brand svg {
+  width: 22px;
+  height: 22px;
+  color: var(--ink);
+}
+
+footer.site {
+  border-top: 1px solid var(--line);
+  padding-block: 48px;
+  color: var(--ink3);
+  font-size: 0.92rem;
+}
+footer.site a {
+  color: var(--ink2);
+  text-decoration: none;
+}
+footer.site a:hover {
+  color: var(--ink);
+}
+footer.site .cols {
+  display: grid;
+  gap: 28px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  margin-bottom: 36px;
+}
+footer.site h4 {
+  color: var(--ink);
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 1rem;
+  margin: 0 0 12px;
+}
+footer.site ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+@media (max-width: 640px) {
+  header.site nav {
+    gap: 16px;
+    font-size: 0.9rem;
+  }
+  header.site nav a.hide-sm {
+    display: none;
+  }
+  body {
+    font-size: 16px;
+  }
+}

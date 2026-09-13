@@ -1,0 +1,10 @@
+[package]
+name = "pp-fakephone"
+description = "Simulated phone client. Drives a running companion end-to-end without an Android device."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+pp-protocol = { path = "../pp-protocol" }

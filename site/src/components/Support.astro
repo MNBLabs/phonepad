@@ -1,0 +1,41 @@
+---
+/**
+ * One support call to action. Never more than one per page, and never on the
+ * page someone is on because something is broken.
+ */
+import { SPONSORS, BMC, REPO } from "../consts";
+const sponsors = SPONSORS || `${REPO}/../sponsors`;
+---
+
+<div class="support">
+  <p>
+    <strong>PhonePad is free and open source</strong>, and the controller is not
+    going behind a paywall. If it saved you buying one, you can help pay for the
+    time.
+  </p>
+  <div class="row">
+    {SPONSORS && <a class="btn btn-ghost" href={SPONSORS} rel="noopener">GitHub Sponsors</a>}
+    {BMC && <a class="btn btn-ghost" href={BMC} rel="noopener">Buy me a coffee</a>}
+    {!SPONSORS && !BMC && (
+      <a class="btn btn-ghost" href={REPO} rel="noopener">Star it on GitHub</a>
+    )}
+  </div>
+</div>
+
+<style>
+  .support {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 24px;
+    background: var(--raised);
+    max-width: var(--measure);
+  }
+  .support p {
+    color: var(--ink2);
+  }
+  .row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+</style>

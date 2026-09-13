@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The paper ground from docs/design.md, so the window behind the first
+         Flutter frame is the same colour as the first Flutter frame. -->
+    <color name="paper">#F7F7FC</color>
+</resources>

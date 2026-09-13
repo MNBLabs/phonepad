@@ -1,0 +1,69 @@
+name: Bug report
+description: Something does not work
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: if Windows sees the pad but the game ignores it, the game
+        was started before the controller existed. Hold the XBOX button on the
+        phone to re-attach. That one is expected behaviour, not a bug.
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: input
+    id: phone
+    attributes:
+      label: Phone
+      placeholder: Galaxy S24 Ultra, Android 16
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 Pro 23H2
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: PhonePad version
+      description: Shown in Settings on the phone and at the top of the companion window.
+    validations:
+      required: true
+
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Diagnostics
+      description: >
+        From the phone's Diagnostics screen and the companion's Advanced section.
+        Round trip, packet rate, loss, and the rejection breakdown if anything is
+        being rejected. Paste as text rather than a screenshot if you can.
+      render: text
+
+  - type: textarea
+    id: game
+    attributes:
+      label: Which game or app
+      description: If it is specific to one. Say whether it is cloud-streamed or installed locally.

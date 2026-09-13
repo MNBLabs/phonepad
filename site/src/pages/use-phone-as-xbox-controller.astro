@@ -1,0 +1,160 @@
+---
+import Base from "../layouts/Base.astro";
+import AdSlot from "../components/AdSlot.astro";
+import { RELEASES } from "../consts";
+---
+
+<Base
+  title="How to use your phone as an Xbox controller for PC"
+  description="Use an Android phone as a wireless Xbox controller for Windows over Wi-Fi. No Bluetooth, no cable, no adapter. Windows sees a real XInput pad, so every game works."
+  article
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">
+        How to use your phone as an Xbox controller for PC
+      </h1>
+      <p class="lede">
+        Your phone already has a high-refresh touchscreen, Wi-Fi and a vibration
+        motor. That is most of a controller.
+      </p>
+
+      <h2>What actually has to happen</h2>
+      <p>
+        A PC game does not read touchscreens. It asks Windows for a controller,
+        through XInput, DirectInput, GameInput or — in a browser — the Gamepad
+        API. So an app on your phone cannot simply "be" a controller: something
+        on the PC has to present one that Windows believes in.
+      </p>
+      <p>
+        That is the whole design. PhonePad has two halves: an app on the phone
+        that turns your thumbs into controller state, and a small program on the
+        PC that creates a <strong>virtual Xbox 360 pad</strong> and drives it
+        with whatever the phone sends. Windows lists it in
+        <code>joy.cpl</code> like any other pad, and games cannot tell the
+        difference — because at the level a game looks, there is no difference.
+      </p>
+
+      <h2>Why not Bluetooth</h2>
+      <p>
+        Phones cannot present themselves as a Bluetooth HID gamepad. That is a
+        limitation of Android, not a gap somebody forgot to fill: the Bluetooth
+        HID device role is not available to ordinary apps, and the handful of
+        tools that claim otherwise are either rooted, vendor-specific, or
+        actually doing something else.
+      </p>
+      <p>
+        Wi-Fi has no such restriction, and on a normal home network it is
+        <em>faster</em>. Measured on a Galaxy S24 Ultra and a Windows 11 PC:
+        <strong>4.9–8.0 ms</strong> round trip, phone to PC and back. Bluetooth
+        gamepads typically sit around 10 ms and up.
+      </p>
+
+      <AdSlot />
+
+      <h2>The five-minute version</h2>
+      <ol>
+        <li>
+          <strong>Install ViGEmBus on the PC.</strong> The driver that lets a
+          program create a virtual controller. Once, ever.
+        </li>
+        <li>
+          <strong>Run the PhonePad companion.</strong> One self-contained
+          program. Allow it through the firewall for private networks.
+        </li>
+        <li>
+          <strong>Install the app on your phone</strong> and put both devices on
+          the same Wi-Fi.
+        </li>
+        <li>
+          <strong>Tap your PC in the app</strong> and type the six digits it
+          shows. Once — after that it connects straight through.
+        </li>
+      </ol>
+      <p>
+        <a class="btn btn-primary" href={RELEASES} rel="noopener">Download PhonePad</a>
+        <a class="btn btn-ghost" href="/setup/" style="margin-left:10px">Full guide</a>
+      </p>
+
+      <h2>Does it work with every game?</h2>
+      <p>
+        With every game that supports an Xbox controller, which is nearly all of
+        them on PC. Steam, Game Pass, emulators, itch.io downloads, browser
+        games, and Xbox Cloud Gaming. There is no per-game configuration,
+        because there is nothing game-specific happening — Windows has a
+        controller, and the game finds it the way it finds any other.
+      </p>
+      <p>
+        Games that only read keyboard and mouse are the exception, and they were
+        never going to work with a real Xbox pad either.
+      </p>
+
+      <h2>Is a touchscreen good enough?</h2>
+      <p>
+        For some things it is genuinely better than you expect, and for others
+        it is not a physical stick and never will be. Being honest about which
+        is which:
+      </p>
+      <ul>
+        <li>
+          <strong>Buttons, D-pad, shoulders</strong> — fine. A tap is a tap.
+        </li>
+        <li>
+          <strong>Steering and driving</strong> — good, once the response is set
+          up properly. Most on-screen controllers get this badly wrong; see
+          below.
+        </li>
+        <li>
+          <strong>Camera and aiming</strong> — usable, and the weakest case.
+          There is no spring pulling back to centre, so holding a slow pan takes
+          attention.
+        </li>
+        <li>
+          <strong>Competitive shooters</strong> — no. Buy a controller.
+        </li>
+      </ul>
+
+      <h2>The thing most on-screen controllers get wrong</h2>
+      <p>
+        They feel dead at the start of the travel and then far too sharp. That
+        is two deadzones stacked on top of each other.
+      </p>
+      <p>
+        A physical stick needs an inner deadzone because it has spring slop and
+        sensor drift to hide, and every game applies one on that assumption. A
+        touchscreen has neither problem — your thumb is exactly where you put
+        it. Add another deadzone in the app and roughly a quarter of your
+        thumb's travel does nothing at all, then everything arrives at once.
+      </p>
+      <p>
+        PhonePad starts its output just past the deadzone the game applies, and
+        spends the rest of your travel on the range the game responds to. The
+        measured curves are on the <a href="/docs/">documentation page</a>.
+      </p>
+
+      <h2>Does it drain the battery?</h2>
+      <p>
+        Less than you would guess. The screen is the expensive part, not the
+        networking — 40 bytes at 250 times a second is about 10 KB/s. Turning
+        the brightness down does more for battery life than anything else you
+        could change.
+      </p>
+
+      <h2>Is it safe on my network?</h2>
+      <p>
+        Pairing uses an X25519 exchange authenticated by the six-digit code, and
+        every packet afterwards carries an authentication tag and passes a replay
+        check — so nothing else on your network can inject input into your PC.
+        Nothing leaves your network: no account, no server, no telemetry.
+      </p>
+
+      <hr />
+      <p class="muted">
+        See also:
+        <a href="/xbox-cloud-gaming-phone-controller/">
+          using your phone as a controller for Xbox Cloud Gaming</a
+        >.
+      </p>
+    </div>
+  </section>
+</Base>

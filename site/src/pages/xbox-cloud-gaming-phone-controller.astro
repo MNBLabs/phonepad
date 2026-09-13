@@ -1,0 +1,143 @@
+---
+import Base from "../layouts/Base.astro";
+import AdSlot from "../components/AdSlot.astro";
+import { RELEASES } from "../consts";
+---
+
+<Base
+  title="Xbox Cloud Gaming without a controller"
+  description="Play Xbox Cloud Gaming on a Windows PC using your Android phone as the controller. Includes why a cloud game ignores a controller that Windows can clearly see, and how to fix it."
+  article
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">
+        Xbox Cloud Gaming without a controller
+      </h1>
+      <p class="lede">
+        Game Pass Ultimate streams the game. It does not stream you a
+        controller, and almost nothing in cloud gaming works without one.
+      </p>
+
+      <h2>Why cloud gaming needs a controller more than PC gaming does</h2>
+      <p>
+        Most cloud titles are console games. Many have no keyboard and mouse
+        support at all, because they never needed any. So you can be paying for
+        Game Pass Ultimate, on a PC that streams perfectly, and be unable to get
+        past the title screen.
+      </p>
+      <p>
+        PhonePad solves that by giving Windows a real Xbox 360 pad on an XInput
+        slot, driven by your phone over Wi-Fi. The Xbox app and the browser both
+        read it as an ordinary controller, because that is what it is.
+      </p>
+
+      <p>
+        <a class="btn btn-primary" href={RELEASES} rel="noopener">Download PhonePad</a>
+        <a class="btn btn-ghost" href="/setup/" style="margin-left:10px">Setup guide</a>
+      </p>
+
+      <h2>The one thing that will confuse you</h2>
+      <p>
+        This is worth reading before it happens, because the symptom is so
+        strange that people assume the controller is broken.
+      </p>
+      <p>
+        <strong>
+          The Xbox app's menus respond. The Guide button works. And the game
+          itself ignores everything you do.
+        </strong>
+      </p>
+      <p>
+        Nothing is broken. A cloud gaming client binds a controller to a
+        streaming session at the moment it observes one <em>arrive</em>. It
+        listens for a controller-connected event and attaches whatever turns up
+        to the running stream.
+      </p>
+      <p>
+        A controller that already existed when the stream started never
+        generates an arrival event. The client's own interface reads whatever
+        pads are present, so menus behave perfectly — but the session itself
+        ends up with no controller bound to it, and the game receives nothing.
+      </p>
+
+      <h3>The fix</h3>
+      <p>
+        <strong>Launch the game first, then hold the XBOX button on the phone
+        for a second.</strong>
+      </p>
+      <p>
+        That unplugs the virtual pad and plugs it straight back in, which
+        produces a genuine arrival event for the client to notice — without
+        disturbing your phone's connection or your place in the game.
+      </p>
+      <p>
+        The companion can also do it automatically: tick
+        <em>"Do this automatically when a cloud game starts"</em>. It is off by
+        default, because it works by noticing which programs are running, and a
+        wrong guess unplugs a controller somebody may be using.
+      </p>
+      <p class="small muted">
+        This is not specific to PhonePad. The same thing happens with a physical
+        controller plugged in after a stream has started, which is why the usual
+        advice is "connect your controller before you launch the game".
+      </p>
+
+      <AdSlot />
+
+      <h2>Browser or the Xbox app?</h2>
+      <p>
+        Both work. The Xbox app is generally the smoother experience on Windows;
+        the browser (Edge or Chrome at
+        <code>xbox.com/play</code>) avoids installing anything. The arrival-event
+        behaviour above applies to both — in a browser the underlying event is
+        <code>gamepadconnected</code>, which a page only receives for a pad that
+        arrives while it is open.
+      </p>
+
+      <h2>Is the latency a problem?</h2>
+      <p>
+        Cloud gaming already has tens of milliseconds of latency between you and
+        a datacentre. PhonePad adds <strong>4.9–8.0 ms</strong> on top, measured
+        on home Wi-Fi — a small fraction of what streaming itself costs, and less
+        than many Bluetooth controllers add.
+      </p>
+      <p>
+        If cloud gaming is playable for you at all, PhonePad will not be what
+        makes it unplayable.
+      </p>
+
+      <h2>Which games are realistic on a touchscreen</h2>
+      <p>Being honest rather than promotional:</p>
+      <ul>
+        <li>
+          <strong>Works well</strong> — turn-based games, platformers, racing,
+          sports, RPGs, anything menu-driven.
+        </li>
+        <li>
+          <strong>Workable</strong> — third-person action and adventure games.
+          Camera control is the part that takes adjusting to.
+        </li>
+        <li>
+          <strong>Not really</strong> — competitive first-person shooters.
+          Nothing on a flat screen replaces two sprung sticks.
+        </li>
+      </ul>
+
+      <h2>Do I need Game Pass Ultimate?</h2>
+      <p>
+        For Xbox Cloud Gaming, yes — that is Microsoft's requirement and nothing
+        to do with PhonePad. PhonePad is free, and works just as well with
+        locally installed games, Steam, and emulators.
+      </p>
+
+      <hr />
+      <p class="muted">
+        See also:
+        <a href="/use-phone-as-xbox-controller/">
+          how to use your phone as an Xbox controller for PC</a
+        >, or <a href="/troubleshooting/">troubleshooting</a>.
+      </p>
+    </div>
+  </section>
+</Base>

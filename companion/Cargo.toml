@@ -1,0 +1,31 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/pp-companion",
+    "crates/pp-core",
+    "crates/pp-fakephone",
+    "crates/pp-protocol",
+    "crates/pp-vigem-probe",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+# Kept a few releases behind the installed 1.96 for headroom, but high enough
+# that the MSRV-aware resolver does not silently pin ancient dependency versions.
+rust-version = "1.85"
+license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+# `unstable_xtarget_notification` is how rumble is read back: the driver
+# reports it as a notification rather than as anything pollable. Unstable in
+# the crate's sense of "the API may change", not "it may misbehave".
+vigem-client = { version = "0.1.4", features = ["unstable_xtarget_notification"] }
+windows-sys = "0.59"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+panic = "abort"
+strip = true

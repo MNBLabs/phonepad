@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Question or idea
+    url: https://github.com/MNBLabs/phonepad/discussions
+    about: Discussions are for questions. Issues are for things that are broken.
+  - name: Setup and troubleshooting
+    url: https://phonepad.dynshift.com/troubleshooting/
+    about: The things that actually go wrong, and what to do about them.
+  - name: Security vulnerability
+    url: https://github.com/MNBLabs/phonepad/security/advisories/new
+    about: Report privately, not as an issue.

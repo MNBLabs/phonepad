@@ -1,0 +1,46 @@
+# Rust
+companion/target/
+
+# Flutter / Dart
+phone/.dart_tool/
+phone/.flutter-plugins
+phone/.flutter-plugins-dependencies
+phone/build/
+phone/.pub-cache/
+phone/.pub/
+phone/android/.gradle/
+phone/android/app/build/
+phone/android/local.properties
+phone/android/.cxx/
+*.iml
+
+# Signing material — never commit
+phone/android/key.properties
+phone/android/keystore/
+*.jks
+*.keystore
+
+# Release artifacts are built, not tracked
+dist/*
+!dist/.gitkeep
+
+# Editors / OS
+.idea/
+.vscode/
+*.swp
+Thumbs.db
+desktop.ini
+
+# Local scratch and private working notes — never tracked, never synced to the
+# public repo. Anything here is assumed to be unpublishable.
+temp/
+scratch/
+*.local.md
+
+# Website build output
+site/dist/
+site/.astro/
+node_modules/
+
+# Measurement output from the stick-tuning harness
+tools/traces/

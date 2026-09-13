@@ -1,0 +1,18 @@
+[package]
+name = "pp-vigem-probe"
+description = "M1 gate: proves Windows genuinely sees a working virtual Xbox controller."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+vigem-client.workspace = true
+
+[dependencies.windows-sys]
+workspace = true
+features = [
+    "Win32_Foundation",
+    "Win32_System_LibraryLoader",
+    "Win32_UI_Input_XboxController",
+]

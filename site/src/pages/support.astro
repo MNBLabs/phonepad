@@ -1,0 +1,88 @@
+---
+import Base from "../layouts/Base.astro";
+import { REPO, ISSUES, DISCUSSIONS, SPONSORS, BMC } from "../consts";
+---
+
+<Base
+  title="Support"
+  description="Get help with PhonePad, report a bug, or support development. PhonePad is free and open source."
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">Getting help, and giving it</h1>
+
+      <h2>Something is broken</h2>
+      <p>
+        Start with <a href="/troubleshooting/">troubleshooting</a> — it covers
+        the things that actually go wrong. If that does not help,
+        <a href={ISSUES} rel="noopener">open an issue</a> and include what the
+        Diagnostics screen shows.
+      </p>
+
+      <h2>A question, or an idea</h2>
+      <p>
+        <a href={DISCUSSIONS} rel="noopener">Discussions</a> is the right place.
+        Issues are for things that are broken.
+      </p>
+
+      <h2>Supporting development</h2>
+      <p>
+        PhonePad is free and open source, and the controller is not going behind
+        a paywall. There is no premium tier holding your D-pad hostage.
+      </p>
+      <p>
+        It is also a side project, built and maintained by one person in
+        evenings. If it saved you buying a controller — or saved you the
+        annoyance of one being in the wrong room — you can help pay for the
+        time.
+      </p>
+
+      {
+        SPONSORS || BMC ? (
+          <p style="display:flex;gap:12px;flex-wrap:wrap">
+            {SPONSORS && (
+              <a class="btn btn-primary" href={SPONSORS} rel="noopener">
+                GitHub Sponsors
+              </a>
+            )}
+            {BMC && (
+              <a class="btn btn-ghost" href={BMC} rel="noopener">
+                Buy me a coffee
+              </a>
+            )}
+          </p>
+        ) : (
+          <p class="muted">
+            Sponsorship links are not set up yet. Until they are, a star on{" "}
+            <a href={REPO} rel="noopener">
+              the repository
+            </a>{" "}
+            genuinely helps — it is most of how anyone finds a project like this.
+          </p>
+        )
+      }
+
+      <h2>Other ways to help</h2>
+      <ul>
+        <li>
+          <strong>Tell someone.</strong> The people who need PhonePad are the
+          ones who do not know it exists.
+        </li>
+        <li>
+          <strong>Report what breaks.</strong> A precise bug report is worth more
+          than a donation.
+        </li>
+        <li>
+          <strong>Share a layout.</strong> A tuning that works for a specific
+          game is knowledge nobody else has.
+        </li>
+        <li>
+          <strong>Send a fix.</strong> See
+          <a href={`${REPO}/blob/main/CONTRIBUTING.md`} rel="noopener">
+            CONTRIBUTING.md</a
+          >.
+        </li>
+      </ul>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,150 @@
+---
+import Base from "../layouts/Base.astro";
+import AdSlot from "../components/AdSlot.astro";
+import { REPO } from "../consts";
+---
+
+<Base
+  title="Documentation"
+  description="How PhonePad works: the protocol, the security model, controller tuning, layouts, and the measurements behind every claim."
+  article
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">How PhonePad works</h1>
+      <p class="lede">
+        Short version: your phone sends 40 bytes of controller state to your PC
+        up to 250 times a second, and the PC hands it to Windows as a real Xbox
+        pad.
+      </p>
+
+      <h2>The path</h2>
+      <pre><code>Touch  -&gt;  TouchRouter  -&gt;  ControllerState  -&gt;  UDP (40 bytes)
+                                                      |
+                                                   Wi-Fi
+                                                      v
+                              pp-core  -&gt;  verify  -&gt;  ViGEmBus  -&gt;  XInput</code></pre>
+      <p>
+        UDP, not TCP, and deliberately. A controller wants the <em>latest</em>
+        input, not every input. TCP would retransmit a stale packet and stall
+        everything behind it; PhonePad sends on change plus an unconditional
+        repeat, so a lost packet is corrected a few milliseconds later by the
+        next one. About 10 KB/s at full rate.
+      </p>
+
+      <h2>Pairing and security</h2>
+      <p>
+        Pairing is an X25519 exchange authenticated by the six-digit code shown
+        on the PC. The long-term token it produces is never transmitted. Every
+        packet after that carries a truncated HMAC-SHA256 tag and passes through
+        a 64-slot replay window, so nothing else on your network can inject
+        controller input, and a captured burst cannot be replayed.
+      </p>
+      <p>
+        Nothing leaves your network. No account, no server, no telemetry. The
+        full threat model — including what it does <em>not</em> defend against —
+        is in
+        <a href={`${REPO}/blob/main/SECURITY.md`} rel="noopener">SECURITY.md</a>.
+      </p>
+
+      <h2>Failsafes</h2>
+      <p>
+        If packets stop arriving, every control snaps back to neutral after
+        <strong>120 ms</strong>, and the session is dropped after
+        <strong>2 seconds</strong>. Killing the app mid-button-press released it
+        in 131 ms on real hardware. A held trigger cannot outlive its
+        connection.
+      </p>
+
+      <AdSlot />
+
+      <h2>Tuning the sticks</h2>
+      <p>Per stick, in the layout editor:</p>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Setting</th><th>What it does</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Deadzone</td>
+              <td>
+                Movement ignored as digitiser noise. Small by design — a
+                touchscreen has no slop to hide.
+              </td>
+            </tr>
+            <tr>
+              <td>Anti-deadzone</td>
+              <td>
+                Cancels the deadzone the <em>game</em> applies. Raise it if a
+                game feels numb near centre; lower it if it feels twitchy.
+              </td>
+            </tr>
+            <tr>
+              <td>Saturation</td>
+              <td>
+                How far out full deflection is reached. Below 1.0 means full lock
+                without your thumb having to land exactly on the ring.
+              </td>
+            </tr>
+            <tr>
+              <td>Response curve</td>
+              <td>
+                Above 1.0 gives finer control near centre at the cost of coarser
+                control far out. Racing wants more; aiming wants less.
+              </td>
+            </tr>
+            <tr>
+              <td>Sensitivity</td>
+              <td>A straight multiplier on the output.</td>
+            </tr>
+            <tr>
+              <td>Floating</td>
+              <td>
+                The stick centres wherever your thumb lands rather than at the
+                drawn circle. On by default, and the reason the response is
+                repeatable between grabs.
+              </td>
+            </tr>
+            <tr>
+              <td>Drift</td>
+              <td>
+                Past the ring, the origin follows your thumb, so easing off full
+                lock registers immediately.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2>Layouts</h2>
+      <p>
+        A layout stores a separate arrangement for landscape and portrait and
+        switches when you rotate. Positions are fractions of the screen and sizes
+        are fractions of its shorter edge, which is what makes one layout correct
+        on more than one phone.
+      </p>
+      <p>
+        Layouts can be exported and shared. The format is specified in
+        <a href={`${REPO}/blob/main/protocol/LAYOUT_FORMAT.md`} rel="noopener">
+          LAYOUT_FORMAT.md</a
+        >, and the rule it is built around is that a layout is
+        <strong>data, never code</strong> — importing one changes how your
+        controller looks and responds, and can do nothing else.
+      </p>
+
+      <h2>The numbers</h2>
+      <p>
+        Every figure quoted on this site is measured, and the method is written
+        down beside it in
+        <a href={`${REPO}/blob/main/docs/benchmarks.md`} rel="noopener">
+          benchmarks.md</a
+        >, including what has <em>not</em> been measured. The architecture
+        decisions, and why ViGEmBus was chosen over the alternatives, are in
+        <a href={`${REPO}/blob/main/docs/ADR-001-architecture.md`} rel="noopener">
+          the ADR</a
+        >.
+      </p>
+    </div>
+  </section>
+</Base>

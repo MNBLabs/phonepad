@@ -1,0 +1,147 @@
+---
+import Base from "../layouts/Base.astro";
+import AdSlot from "../components/AdSlot.astro";
+import { RELEASES, REPO } from "../consts";
+---
+
+<Base
+  title="Android gamepad for Windows over Wi-Fi"
+  description="Use an Android phone as a gamepad for Windows over Wi-Fi, with no Bluetooth and no USB cable. How it works, how it compares to the alternatives, and what the latency actually is."
+  article
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">
+        Android gamepad for Windows, over Wi-Fi
+      </h1>
+      <p class="lede">
+        No Bluetooth pairing, no USB cable, no adapter. The phone and the PC
+        talk over the network you already have.
+      </p>
+
+      <h2>Why Wi-Fi and not Bluetooth or USB</h2>
+      <p>
+        <strong>Bluetooth is not available to you.</strong> Presenting a phone as
+        a Bluetooth HID gamepad requires the HID device role, which Android does
+        not expose to ordinary apps. This is a platform restriction, not an
+        oversight, and no amount of app-side cleverness gets around it without
+        root.
+      </p>
+      <p>
+        <strong>USB works but tethers you</strong> to a cable long enough to
+        reach the sofa, and puts the phone in a mode that fights with charging
+        and file transfer.
+      </p>
+      <p>
+        <strong>Wi-Fi is already there</strong>, needs no pairing ritual, and on
+        a normal home network is genuinely fast. Measured on a Galaxy S24 Ultra
+        and a Windows 11 PC: 4.9–8.0 ms round trip, 249 packets per second, 0.0%
+        loss across 42,805 consecutive packets.
+      </p>
+
+      <h2>How it presents to Windows</h2>
+      <p>
+        Windows never learns a phone is involved. A small program on the PC
+        creates a virtual Xbox 360 controller through the ViGEmBus driver, and
+        drives it from what the phone sends. The result appears in
+        <code>joy.cpl</code>, on an XInput slot, indistinguishable from a wired
+        pad — which is why there is nothing to configure per game.
+      </p>
+      <p>
+        That covers XInput, DirectInput, GameInput and the browser Gamepad API,
+        which between them is essentially everything on Windows.
+      </p>
+
+      <AdSlot />
+
+      <h2>How it compares</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Approach</th>
+              <th>Latency</th>
+              <th>Catch</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>PhonePad over Wi-Fi</td>
+              <td>4.9–8.0 ms</td>
+              <td>Needs a program running on the PC</td>
+            </tr>
+            <tr>
+              <td>A real Xbox controller (USB)</td>
+              <td>~1–4 ms</td>
+              <td>Costs money, and is not in your pocket</td>
+            </tr>
+            <tr>
+              <td>A real controller (Bluetooth)</td>
+              <td>~10 ms and up</td>
+              <td>Costs money; pairing is its own adventure</td>
+            </tr>
+            <tr>
+              <td>Key-mapping apps</td>
+              <td>Varies</td>
+              <td>
+                Sends keystrokes, not controller input — analogue sticks and
+                triggers do not survive the translation
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">
+        The PhonePad figures are from
+        <a href={`${REPO}/blob/main/docs/benchmarks.md`} rel="noopener">
+          our own measurements</a
+        >, on our own hardware, with the method written down. The comparison
+        figures are typical published values, not measurements we made.
+      </p>
+
+      <h2>What the 40 bytes contain</h2>
+      <p>
+        Sixteen button bits, four 16-bit stick axes, two 8-bit triggers, a
+        session id, a sequence number, a timestamp and an authentication tag.
+        Sent on every change plus an unconditional repeat, so a dropped packet is
+        corrected within a few milliseconds by the next one rather than
+        retransmitted — a re-sent <em>stale</em> input would be worse than a lost
+        one.
+      </p>
+      <p>
+        That is about 10 KB/s at full rate, which is nothing on any network built
+        this century.
+      </p>
+
+      <h2>What you need</h2>
+      <ul>
+        <li>Windows 10 or 11</li>
+        <li>Android 7 or newer, arm64</li>
+        <li>Both on the same Wi-Fi network</li>
+        <li>The ViGEmBus driver, installed once</li>
+      </ul>
+      <p>
+        A 5 GHz network is worth preferring, but 2.4 GHz works — the traffic is
+        tiny, and what matters is congestion rather than bandwidth.
+      </p>
+
+      <p style="margin-top:2rem">
+        <a class="btn btn-primary" href={RELEASES} rel="noopener">
+          Download PhonePad
+        </a>
+        <a class="btn btn-ghost" href="/setup/" style="margin-left:10px">
+          Setup guide
+        </a>
+      </p>
+
+      <hr />
+      <p class="muted">
+        See also:
+        <a href="/use-phone-as-xbox-controller/">
+          using your phone as an Xbox controller</a
+        >, or
+        <a href="/xbox-cloud-gaming-phone-controller/">Xbox Cloud Gaming</a>.
+      </p>
+    </div>
+  </section>
+</Base>

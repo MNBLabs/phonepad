@@ -1,0 +1,61 @@
+---
+/**
+ * An advertising slot.
+ *
+ * Renders **nothing** when no publisher id is configured, which is the state
+ * this ships in. There is no placeholder, no reserved grey box, and no
+ * half-configured tag — an unconfigured build has no ads and no space where ads
+ * would go.
+ *
+ * Where these may appear is a decision, not a default: documentation,
+ * troubleshooting and the guides. Never on the download path, never between the
+ * steps of an installation, never anywhere a reader might mistake one for part
+ * of the page.
+ */
+import { ADSENSE_CLIENT, ADSENSE_SLOT } from "../consts";
+
+interface Props {
+  /** AdSense ad-unit id. Defaults to the configured unit; without one there
+   *  is nothing to render. */
+  slot?: string;
+  label?: string;
+}
+const { slot = ADSENSE_SLOT, label = "Advertisement" } = Astro.props as Props;
+const show = Boolean(ADSENSE_CLIENT && slot);
+---
+
+{
+  show && (
+    <aside class="ad" aria-label={label}>
+      <span class="ad-label">{label}</span>
+      <ins
+        class="adsbygoogle"
+        style="display:block"
+        data-ad-client={ADSENSE_CLIENT}
+        data-ad-slot={slot}
+        data-ad-format="auto"
+        data-full-width-responsive="true"
+      />
+      <script is:inline>
+        (adsbygoogle = window.adsbygoogle || []).push({});
+      </script>
+    </aside>
+  )
+}
+
+<style>
+  .ad {
+    display: block;
+    margin: 3rem 0;
+    padding-top: 12px;
+    border-top: 1px solid var(--line);
+  }
+  .ad-label {
+    display: block;
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 10px;
+  }
+</style>

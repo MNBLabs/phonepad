@@ -1,0 +1,16 @@
+[package]
+name = "pp-companion"
+description = "PhonePad Windows companion: status, pairing and live diagnostics."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "phonepad-companion"
+path = "src/main.rs"
+
+[dependencies]
+pp-core = { path = "../pp-core" }
+pp-protocol = { path = "../pp-protocol" }
+eframe = "0.32"

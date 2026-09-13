@@ -1,0 +1,5 @@
+# GitHub shows the Sponsor button only once the account is enrolled in
+# GitHub Sponsors; until then this line is inert.
+github: [MNBLabs]
+# buy_me_a_coffee: <username>
+custom: ["https://phonepad.dynshift.com/support/"]

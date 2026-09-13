@@ -1,0 +1,398 @@
+---
+import Base from "../layouts/Base.astro";
+import Controller from "../components/Controller.astro";
+import Support from "../components/Support.astro";
+import { DOWNLOAD_APK, REPO, MEASURED } from "../consts";
+---
+
+<Base>
+  <section class="hero-section">
+    <div class="wrap hero">
+      <div class="hero-copy">
+        <h1>No controller?<br />Use your phone.</h1>
+        <p class="lede">
+          PhonePad turns an Android phone into a wireless Xbox-compatible
+          controller for Windows. No Bluetooth, no cable, nothing to buy.
+        </p>
+        <div class="cta">
+          <a class="btn btn-primary" href={DOWNLOAD_APK} rel="noopener">Download the app</a>
+          <a class="btn btn-ghost" href="/setup/">How to set it up</a>
+        </div>
+      </div>
+
+      <div class="hero-art" aria-hidden="false">
+        <div class="light"></div>
+        <div class="phone">
+          <Controller animate />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <p class="figures">
+        <span><b>{MEASURED.latency}</b> round trip</span>
+        <span><b>{MEASURED.rate}</b> packets a second</span>
+        <span><b>{MEASURED.loss}</b> loss over {MEASURED.packets} packets</span>
+        <span><b>{MEASURED.jitter}</b> jitter</span>
+      </p>
+      <p class="small muted" style="margin-top:14px">
+        Measured on a Galaxy S24 Ultra and a Windows 11 PC on home Wi-Fi. The
+        method and the raw figures are in
+        <a href={`${REPO}/blob/main/docs/benchmarks.md`} rel="noopener">the benchmarks</a>.
+        Nothing on this site is a claim the repository does not support.
+      </p>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <h2 style="margin-top:0">Windows sees a real controller</h2>
+      <p class="lede">
+        Not a keyboard emulator, and not a remote-desktop trick. PhonePad
+        creates a virtual Xbox 360 pad on an XInput slot, so anything that takes
+        a controller takes this.
+      </p>
+      <ul class="rows" style="margin-top:2.2rem;max-width:760px">
+        <li>
+          <h3>Xbox Cloud Gaming</h3>
+          <p>
+            Play Game Pass titles in the Xbox app or a browser with no
+            controller in the house. There is one thing to know about how cloud
+            clients bind controllers, and
+            <a href="/xbox-cloud-gaming-phone-controller/">it is explained here</a>.
+          </p>
+        </li>
+        <li>
+          <h3>Steam, emulators, browser games</h3>
+          <p>
+            Anything reading XInput, DirectInput, GameInput or the browser
+            Gamepad API sees an ordinary Xbox pad. No per-game configuration.
+          </p>
+        </li>
+        <li>
+          <h3>Nothing leaves your network</h3>
+          <p>
+            No account, no server, no telemetry. The phone talks to your PC
+            directly over your own Wi-Fi, and every packet is authenticated so
+            nothing else on the network can inject input.
+          </p>
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="tint">
+    <div class="wrap">
+      <h2 style="margin-top:0">Sticks that behave like sticks</h2>
+      <div class="prose">
+        <p class="muted">
+          Most on-screen controllers feel dead at the start of the travel and
+          then far too sharp. That is two deadzones stacked on top of each
+          other. A physical stick needs an inner deadzone because it has spring
+          slop and sensor drift to hide, and the game at the far end already
+          applies one on that assumption. Add another in the app and the first
+          quarter of your thumb's travel does nothing at all.
+        </p>
+        <p class="muted">
+          PhonePad does the opposite. The moment your thumb leaves centre, the
+          output starts just past the game's own dead band, and the rest of your
+          travel is spent on the range the game actually responds to.
+        </p>
+      </div>
+
+      <div class="table-scroll" style="max-width:640px;margin-top:2rem">
+        <table>
+          <thead>
+            <tr>
+              <th>Thumb travel</th>
+              <th>Typical app</th>
+              <th>PhonePad</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>5%</td><td>nothing</td><td>1.2%</td></tr>
+            <tr><td>10%</td><td>nothing</td><td>4.3%</td></tr>
+            <tr><td>20%</td><td>nothing</td><td>12.3%</td></tr>
+            <tr><td>30%</td><td>6.4%</td><td>21.9%</td></tr>
+            <tr><td>50%</td><td>33.2%</td><td>44.2%</td></tr>
+            <tr><td>100%</td><td>100%</td><td>100%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="small muted">
+        What the game receives, composed with a typical in-game deadzone of
+        0.15. Measured on real hardware.
+      </p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <h2 style="margin-top:0">How it works</h2>
+      <ol class="steps">
+        <li>
+          <h3>Run the companion on your PC</h3>
+          <p class="muted">
+            A single self-contained program. No installer, no .NET. It creates
+            the virtual controller Windows can see.
+          </p>
+        </li>
+        <li>
+          <h3>Open the app and tap your PC</h3>
+          <p class="muted">
+            Your PC appears on its own within a second or two. Type the six
+            digits it shows, once, ever.
+          </p>
+        </li>
+        <li>
+          <h3>Play</h3>
+          <p class="muted">
+            After the first pairing, opening the app and tapping your PC goes
+            straight to the controller.
+          </p>
+        </li>
+      </ol>
+      <p style="margin-top:2rem">
+        <a class="btn btn-ghost" href="/setup/">Full setup guide</a>
+      </p>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <h2 style="margin-top:0">What it looks like</h2>
+      <p class="lede">Real screenshots, from a real phone.</p>
+      <figure class="shot-wide">
+        <img
+          src="/shots/controller.jpg"
+          width="1200"
+          height="554"
+          alt="The PhonePad controller in landscape: two sticks, a D-pad, four face buttons, shoulder buttons and analogue triggers, drawn as thin white outlines over a near-black background"
+          loading="lazy"
+        />
+        <figcaption>
+          The controller. Monochrome and outline-first on purpose: it is drawn
+          over your game, not instead of it.
+        </figcaption>
+      </figure>
+      <div class="shots">
+        <figure>
+          <img
+            src="/shots/onboarding.jpg"
+            width="560"
+            height="1133"
+            alt="The PhonePad first-run screen reading: No controller? Use your phone."
+            loading="lazy"
+          />
+          <figcaption>First run explains that a PC component exists.</figcaption>
+        </figure>
+        <figure>
+          <img
+            src="/shots/connect.jpg"
+            width="560"
+            height="1133"
+            alt="The connect screen showing a PC found on the network, ready to pair"
+            loading="lazy"
+          />
+          <figcaption>Your PC appears on its own. One tap to pair, then one tap to play.</figcaption>
+        </figure>
+        <figure>
+          <img
+            src="/shots/controller-portrait.jpg"
+            width="560"
+            height="1133"
+            alt="The PhonePad controller in portrait orientation"
+            loading="lazy"
+          />
+          <figcaption>Portrait is a separate arrangement, switched automatically.</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <h2 style="margin-top:0">Make it yours</h2>
+      <div class="prose">
+        <p class="muted">
+          Nothing about the on-screen pad is fixed. Move, resize, rotate and
+          hide any control; tune deadzone, sensitivity and response per stick;
+          keep separate arrangements for landscape and portrait that switch when
+          you rotate the phone.
+        </p>
+        <p class="muted">
+          Four presets ship: <strong>Standard</strong>, <strong>Racing</strong>
+          with a larger left stick and analogue triggers,
+          <strong>Precision</strong> for aiming, and <strong>Southpaw</strong>.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section style="padding-top:0">
+    <div class="wrap">
+      <h2 style="margin-top:0">Open source, and staying that way</h2>
+      <div class="prose">
+        <p class="muted">
+          PhonePad is GPL-3.0. The whole thing is on GitHub: the Flutter app,
+          the Rust companion, the wire protocol, the tests and the measurements
+          behind every number on this page.
+        </p>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:2.5rem">
+        <a class="btn btn-ghost" href={REPO} rel="noopener">Read the source</a>
+        <a class="btn btn-ghost" href={`${REPO}/issues`} rel="noopener">Report a bug</a>
+      </div>
+      <Support />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero-section {
+    padding-top: clamp(2rem, 6vw, 4.5rem);
+    padding-bottom: clamp(2.5rem, 6vw, 4rem);
+    overflow: hidden;
+  }
+  .hero {
+    display: grid;
+    gap: clamp(2rem, 5vw, 4rem);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    align-items: center;
+  }
+  .hero h1 {
+    margin-bottom: 0.4em;
+  }
+  .cta {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 2rem;
+  }
+
+  /*
+   * The one authored moment on the page. The brand's light, the same three
+   * stops as the app icon, sits behind the phone and drifts very slowly. It is
+   * the only place on the site the gradient appears, because it is the only
+   * place the mark's world is being shown rather than described.
+   */
+  .hero-art {
+    position: relative;
+    padding: clamp(24px, 6vw, 56px);
+  }
+  .light {
+    position: absolute;
+    inset: -22%;
+    border-radius: 50%;
+    background:
+      radial-gradient(40% 40% at 24% 76%, var(--light-1) 0%, transparent 100%),
+      radial-gradient(34% 34% at 76% 22%, var(--light-3) 0%, transparent 100%),
+      radial-gradient(52% 48% at 50% 50%, var(--light-2) 0%, transparent 100%);
+    filter: blur(36px) saturate(1.05);
+    opacity: 0.9;
+    animation: drift 24s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+  @keyframes drift {
+    from {
+      transform: rotate(-4deg) scale(1);
+    }
+    to {
+      transform: rotate(5deg) scale(1.06);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .light {
+      animation: none;
+    }
+  }
+
+  .phone {
+    position: relative;
+    background: var(--night);
+    border-radius: 36px;
+    padding: 10px;
+    box-shadow: 0 30px 60px -24px rgba(21, 20, 43, 0.5);
+  }
+
+  .steps {
+    list-style: none;
+    margin: 2rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 0;
+    max-width: 760px;
+    counter-reset: step;
+  }
+  .steps li {
+    display: grid;
+    grid-template-columns: 56px 1fr;
+    gap: 16px;
+    padding: 22px 0;
+    border-top: 1px solid var(--line);
+    counter-increment: step;
+  }
+  .steps li:last-child {
+    border-bottom: 1px solid var(--line);
+  }
+  .steps li::before {
+    content: counter(step);
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: 2rem;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    color: var(--brand);
+  }
+  .steps h3 {
+    grid-column: 2;
+    margin: 0 0 6px;
+    font-size: 1.15rem;
+  }
+  .steps p {
+    grid-column: 2;
+    margin: 0;
+  }
+
+  .tint {
+    background: var(--sunken);
+  }
+
+  .shot-wide {
+    margin: 2.4rem 0 0;
+  }
+  .shot-wide img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--r-l);
+    display: block;
+  }
+
+  .shots {
+    display: grid;
+    gap: 28px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-top: 2.4rem;
+  }
+  .shots img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--r-l);
+    border: 1px solid var(--line);
+    display: block;
+  }
+
+  @media (max-width: 860px) {
+    .hero {
+      grid-template-columns: 1fr;
+    }
+    .hero-art {
+      padding: 20px 8px;
+    }
+    .steps li {
+      grid-template-columns: 40px 1fr;
+    }
+  }
+</style>

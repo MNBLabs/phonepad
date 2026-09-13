@@ -1,0 +1,258 @@
+---
+import "../styles/global.css";
+import { SITE_NAME, DESCRIPTION, REPO, GA_ID, ADSENSE_CLIENT } from "../consts";
+
+interface Props {
+  title?: string;
+  description?: string;
+  /** Set on long-form pages so search engines get a sensible article type. */
+  article?: boolean;
+}
+
+const {
+  title,
+  description = DESCRIPTION,
+  article = false,
+} = Astro.props as Props;
+
+const pageTitle = title ? `${title} · ${SITE_NAME}` : `${SITE_NAME}: use your phone as an Xbox controller for Windows`;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const ogImage = new URL("/og.png", Astro.site).href;
+const path = Astro.url.pathname;
+
+const nav = [
+  { href: "/setup/", label: "Setup" },
+  { href: "/docs/", label: "Docs", small: true },
+  { href: "/troubleshooting/", label: "Troubleshooting", small: true },
+  { href: "/support/", label: "Support" },
+];
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "PhonePad",
+  applicationCategory: "GameApplication",
+  operatingSystem: "Android, Windows 10, Windows 11",
+  description: DESCRIPTION,
+  url: Astro.site?.href,
+  license: "https://www.gnu.org/licenses/gpl-3.0.html",
+  isAccessibleForFree: true,
+  offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+  softwareHelp: new URL("/troubleshooting/", Astro.site).href,
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.png" type="image/png" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <meta name="theme-color" content="#f7f7fc" />
+    {/*
+      Mobile browsers with their own dark mode (Samsung Internet in particular)
+      recolour pages that do not declare a scheme. Declaring it says the site
+      has chosen, and the choice is paper.
+    */}
+    <meta name="color-scheme" content="light" />
+    <link
+      rel="preload"
+      href="/fonts/BricolageDisplay-ExtraBold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="/fonts/Bricolage-Regular.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <meta property="og:type" content={article ? "article" : "website"} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+
+    {
+      /*
+        Analytics and ads load only when their ids are configured, and only
+        after consent. An unconfigured build ships no third-party script at
+        all rather than a placeholder that half-works.
+      */
+    }
+    {
+      (GA_ID || ADSENSE_CLIENT) && (
+        <script
+          is:inline
+          define:vars={{ GA_ID, ADSENSE_CLIENT }}
+          set:html={`
+        (function () {
+          if (localStorage.getItem('pp-consent') !== 'yes') return;
+          if (GA_ID) {
+            var s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+            document.head.appendChild(s);
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', GA_ID, { anonymize_ip: true });
+          }
+          if (ADSENSE_CLIENT) {
+            var a = document.createElement('script');
+            a.async = true;
+            a.crossOrigin = 'anonymous';
+            a.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + ADSENSE_CLIENT;
+            document.head.appendChild(a);
+          }
+        })();
+      `}
+        />
+      )
+    }
+  </head>
+
+  <body>
+    <a
+      href="#main"
+      style="position:absolute;left:-9999px;top:0"
+      onfocus="this.style.left='8px';this.style.top='8px';this.style.zIndex='99';this.style.background='var(--raised)';this.style.padding='10px'"
+      onblur="this.style.left='-9999px'">Skip to content</a
+    >
+
+    <header class="site">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <svg viewBox="0 0 128 128" fill="none" stroke="currentColor" stroke-width="10.1935" aria-hidden="true">
+            <path d="M57.0607 78.6838L40.843 94.9025C37.1883 98.5572 32.4935 100.534 27.7043 100.832C28.0025 96.0434 29.9806 91.3489 33.635 87.6945L49.8527 71.4768L57.0607 78.6838ZM94.9025 87.6945C98.5569 91.3489 100.534 96.0434 100.832 100.832C96.0434 100.534 91.3489 98.5569 87.6945 94.9025L71.4768 78.6838L78.6838 71.4768L94.9025 87.6945ZM71.4758 64.2687L64.2688 71.4758L57.0607 64.2687L64.2688 57.0607L71.4758 64.2687ZM27.7043 27.7043C32.4935 28.0022 37.1883 29.9803 40.843 33.635L57.0607 49.8527L49.8527 57.0607L33.635 40.843C29.9804 37.1883 28.0022 32.4935 27.7043 27.7043ZM100.832 27.7043C100.534 32.4935 98.5572 37.1883 94.9025 40.843L78.6838 57.0607L71.4768 49.8527L87.6945 33.635C91.3489 29.9806 96.0434 28.0025 100.832 27.7043Z"></path>
+            <path d="M69.096 79.2898L69.0967 102.226C69.0967 107.394 67.175 112.112 63.9992 115.709C60.8238 112.112 58.9031 107.394 58.903 102.226V79.2905L69.096 79.2898ZM102.226 58.9032C107.394 58.9032 112.111 60.8246 115.708 64C112.111 67.1754 107.394 69.0968 102.226 69.0968L79.2897 69.0961V58.9039L102.226 58.9032ZM69.096 58.9039V69.0961L58.903 69.0968V58.9032L69.096 58.9039ZM12.2899 64C15.8871 60.8242 20.6055 58.9032 25.774 58.9032H48.7094V69.0968H25.774C20.6055 69.0968 15.8871 67.1758 12.2899 64ZM63.9992 12.2907C67.175 15.888 69.0967 20.6056 69.0967 25.7741L69.096 48.7102L58.903 48.7095V25.7741C58.9031 20.606 60.8238 15.8878 63.9992 12.2907Z"></path>
+          </svg>
+          PhonePad
+        </a>
+        <nav>
+          {
+            nav.map((n) => (
+              <a
+                href={n.href}
+                class={n.small ? "hide-sm" : undefined}
+                aria-current={path === n.href ? "page" : undefined}
+              >
+                {n.label}
+              </a>
+            ))
+          }
+          <a href={REPO} class="hide-sm" rel="noopener">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site">
+      <div class="wrap">
+        <div class="cols">
+          <div>
+            <h4>PhonePad</h4>
+            <ul>
+              <li><a href="/setup/">Setup guide</a></li>
+              <li><a href="/docs/">Documentation</a></li>
+              <li><a href="/troubleshooting/">Troubleshooting</a></li>
+              <li><a href="/support/">Support the project</a></li>
+            </ul>
+          </div>
+          <div>
+            <h4>Guides</h4>
+            <ul>
+              <li>
+                <a href="/use-phone-as-xbox-controller/">Phone as an Xbox controller</a>
+              </li>
+              <li>
+                <a href="/xbox-cloud-gaming-phone-controller/">Xbox Cloud Gaming</a>
+              </li>
+              <li>
+                <a href="/android-gamepad-for-windows/">Android gamepad for Windows</a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4>Project</h4>
+            <ul>
+              <li><a href={REPO} rel="noopener">Source code</a></li>
+              <li><a href={`${REPO}/releases`} rel="noopener">Releases</a></li>
+              <li><a href={`${REPO}/issues`} rel="noopener">Report a bug</a></li>
+              <li>
+                <a href={`${REPO}/blob/main/CONTRIBUTING.md`} rel="noopener">Contributing</a>
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h4>Legal</h4>
+            <ul>
+              <li><a href="/privacy/">Privacy</a></li>
+              <li><a href="/terms/">Terms</a></li>
+              <li><a href="/cookies/">Cookies</a></li>
+              <li>
+                <a href={`${REPO}/blob/main/TRADEMARK.md`} rel="noopener">Trademark</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <p style="margin:0">
+          PhonePad by <strong>DynShift</strong>. Free and open source under
+          GPL-3.0. Not affiliated with, endorsed by, or sponsored by Microsoft.
+          Xbox and Windows are trademarks of Microsoft Corporation.
+        </p>
+      </div>
+    </footer>
+
+    {
+      (GA_ID || ADSENSE_CLIENT) && (
+        <div
+          id="pp-consent"
+          hidden
+          style="position:fixed;inset:auto 16px 16px;max-width:520px;margin-inline:auto;background:var(--raised);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);padding:18px;z-index:50;font-size:.92rem"
+        >
+          <p style="margin:0 0 12px;color:var(--ink2)">
+            This site would like to use cookies for analytics and advertising.
+            The app itself collects nothing. See the{" "}
+            <a href="/privacy/">privacy policy</a>.
+          </p>
+          <div style="display:flex;gap:10px">
+            <button class="btn btn-primary" data-consent="yes">Accept</button>
+            <button class="btn btn-ghost" data-consent="no">Decline</button>
+          </div>
+        </div>
+        <script is:inline>
+          (function () {
+            var box = document.getElementById("pp-consent");
+            if (!box) return;
+            if (!localStorage.getItem("pp-consent")) box.hidden = false;
+            box.addEventListener("click", function (e) {
+              var v = e.target && e.target.getAttribute("data-consent");
+              if (!v) return;
+              localStorage.setItem("pp-consent", v);
+              box.hidden = true;
+              if (v === "yes") location.reload();
+            });
+          })();
+        </script>
+      )
+    }
+  </body>
+</html>

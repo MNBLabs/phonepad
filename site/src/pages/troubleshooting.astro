@@ -1,0 +1,175 @@
+---
+import Base from "../layouts/Base.astro";
+import AdSlot from "../components/AdSlot.astro";
+import { ISSUES, VIGEM } from "../consts";
+
+const faq = [
+  {
+    q: "My PC does not appear in the app",
+    a: "Almost always one of three things: the companion is not running, the two devices are on different networks, or Windows Firewall is blocking it.",
+  },
+  {
+    q: "Windows sees the pad but the game ignores it",
+    a: "The game was started before the controller existed. Hold the XBOX button on the phone for a second to re-attach the pad, which produces the arrival event the game was waiting for.",
+  },
+  {
+    q: "The pairing code is not accepted",
+    a: "The pairing window is open for 120 seconds and closes on the first successful pairing. Click 'Pair a phone' on the PC to open a fresh one.",
+  },
+  {
+    q: "The controls feel laggy",
+    a: "Check the round trip on the phone's Diagnostics screen. Under 10 ms is normal. Higher usually means a congested 2.4 GHz network or a phone that has fallen back to a distant access point.",
+  },
+];
+
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faq.map((f) => ({
+    "@type": "Question",
+    name: f.q,
+    acceptedAnswer: { "@type": "Answer", text: f.a },
+  })),
+};
+---
+
+<Base
+  title="Troubleshooting"
+  description="Fixes for the things that actually go wrong with PhonePad: the PC not showing up, a game ignoring the controller, pairing failing, and input feeling laggy."
+  article
+>
+  <script type="application/ld+json" set:html={JSON.stringify(schema)} slot="head" />
+
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">When it does not work</h1>
+      <p class="lede">
+        In roughly the order things actually go wrong.
+      </p>
+
+      <h2>My PC does not appear in the app</h2>
+      <p>Three things, in the order worth checking:</p>
+      <ol>
+        <li>
+          <strong>Is the companion running on the PC?</strong> It has to be
+          open. It is not a service and does not start with Windows.
+        </li>
+        <li>
+          <strong>Are both devices on the same Wi-Fi?</strong> Not the same
+          building — the same network. A phone on a 5 GHz guest network and a PC
+          on a 2.4 GHz main network cannot see each other, and neither can a
+          phone that has quietly fallen back to mobile data.
+        </li>
+        <li>
+          <strong>Is the firewall blocking it?</strong> Open
+          <em>Advanced</em> → <em>Network</em> in the companion. If the firewall
+          rule is missing, click <em>Add firewall rule</em> and accept the
+          elevation prompt.
+        </li>
+      </ol>
+      <p>
+        Still nothing? Some routers have <strong>AP isolation</strong> or
+        "client isolation" turned on, which stops devices on the network from
+        talking to each other at all. It is often on by default on guest
+        networks. Turn it off, or use your main network.
+      </p>
+
+      <h2>Windows sees the pad but the game ignores it</h2>
+      <p>
+        The single most common report, and the most confusing, because the
+        controller demonstrably works — the Xbox app's own menus respond, the
+        Guide button opens the overlay, <code>joy.cpl</code> shows every axis
+        moving. Only the game ignores you.
+      </p>
+      <p>
+        <strong>Hold the XBOX button on the phone for a second.</strong>
+      </p>
+      <p>
+        A cloud gaming client binds a controller to a streaming session at the
+        moment it observes one <em>arrive</em>. A pad that already existed when
+        the stream started never produces an arrival event, so the session ends
+        up with no controller bound. Holding XBOX unplugs the virtual pad and
+        plugs it back in, which produces a real arrival event without disturbing
+        your connection.
+      </p>
+      <p>
+        The companion can do this for you — tick <em>"Do this automatically when
+        a cloud game starts"</em>.
+      </p>
+
+      <AdSlot />
+
+      <h2>"No controller driver"</h2>
+      <p>
+        ViGEmBus is not installed, or the install did not finish.
+        <a href={VIGEM} rel="noopener">Install ViGEmBus 1.22.0</a>, then restart
+        the companion. If it still fails, reboot — the driver has to load, and
+        occasionally an upgrade over an old version needs one.
+      </p>
+
+      <h2>The pairing code is not accepted</h2>
+      <p>
+        The pairing window is open for <strong>120 seconds</strong> and closes
+        the moment a phone pairs successfully. If it has expired, click
+        <em>Pair a phone</em> on the PC for a fresh code.
+      </p>
+      <p>
+        If the phone says the PC is not in pairing mode, that is the PC
+        answering honestly rather than a stale screen — open the window and try
+        again.
+      </p>
+
+      <h2>The controls feel laggy</h2>
+      <p>
+        Open <em>Diagnostics</em> on the phone and look at the round trip.
+      </p>
+      <ul>
+        <li><strong>Under 10 ms</strong> — normal, and not your problem.</li>
+        <li>
+          <strong>10–30 ms</strong> — usually a busy 2.4 GHz network. Move to 5
+          GHz if you can.
+        </li>
+        <li>
+          <strong>Above 30 ms, or spiky</strong> — the phone may have roamed to
+          a distant access point, or something is saturating the network.
+        </li>
+      </ul>
+      <p>
+        If <em>loss</em> is above zero, that is the network, not PhonePad. The
+        protocol re-sends unconditionally, so a few dropped packets are
+        invisible, but sustained loss is worth chasing.
+      </p>
+
+      <h2>Everything drops when a second finger lands</h2>
+      <p>
+        Look at the connection status. If it is flickering between connected and
+        reconnecting, the network is dropping packets and the symptom is the
+        link, not the touchscreen. Fix the link.
+      </p>
+
+      <h2>A stick drifts, or does not centre</h2>
+      <p>
+        Rest a thumb still on the stick and watch the axis in Diagnostics. If it
+        flutters, raise <em>Deadzone</em> for that control in the layout editor
+        — it is set to reject digitiser noise, and some screens are noisier than
+        others.
+      </p>
+
+      <h2>Steering is twitchy, or numb</h2>
+      <p>
+        PhonePad starts its output just past the deadzone the game applies, and
+        games differ in how large that is. If a game feels twitchy, lower
+        <em>Anti-deadzone</em> for that stick; if it feels numb near centre,
+        raise it. The layout editor has both, per control.
+      </p>
+
+      <h2>None of this helped</h2>
+      <p>
+        <a href={ISSUES} rel="noopener">Open an issue</a>. Include what the
+        Diagnostics screen says and what the companion's Advanced section shows,
+        especially the rejection breakdown if anything is being rejected — that
+        line is usually the whole diagnosis.
+      </p>
+    </div>
+  </section>
+</Base>

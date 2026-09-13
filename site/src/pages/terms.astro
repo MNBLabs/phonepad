@@ -1,0 +1,95 @@
+---
+import Base from "../layouts/Base.astro";
+import { REPO } from "../consts";
+---
+
+<Base
+  title="Terms"
+  description="Terms of use for the PhonePad website and software."
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">Terms of use</h1>
+      <p class="muted small">Last updated 11 September 2026.</p>
+
+      <h2>The software</h2>
+      <p>
+        PhonePad is free software under the
+        <a href={`${REPO}/blob/main/LICENSE`} rel="noopener">GNU General Public
+        License, version 3 or later</a>. That licence, not this page, governs
+        what you may do with the code. You may use it, study it, change it and
+        share it; if you distribute a modified version you must share your
+        source under the same terms.
+      </p>
+      <p>
+        The wire protocol under <code>protocol/</code> is licensed separately
+        under Apache-2.0, so anyone may write a compatible client or companion.
+      </p>
+
+      <h2>No warranty</h2>
+      <p>
+        PhonePad is provided <strong>as is, without warranty of any kind</strong>.
+        This is the ordinary position for free software and it is stated in full
+        in sections 15 and 16 of the GPL. Nobody is promising it will work, and
+        nobody is liable if it does not.
+      </p>
+      <p>
+        In plain terms: this is a side project given away for free. Use it
+        because it is useful, not because anyone is accountable for it.
+      </p>
+
+      <h2>The name</h2>
+      <p>
+        "PhonePad" and "DynShift" are trademarks and are <em>not</em> covered by
+        the software licence. You may fork the code freely; give your fork its
+        own name. The
+        <a href={`${REPO}/blob/main/TRADEMARK.md`} rel="noopener">trademark policy</a>
+        sets out what is fine without asking, which is most things.
+      </p>
+
+      <h2>This website</h2>
+      <p>
+        The content here is provided for information. It is kept accurate and
+        every performance figure is measured rather than claimed, but it may
+        still be wrong or out of date, and nothing on it is a guarantee.
+      </p>
+      <p>
+        The site design, logo and written content are not covered by the GPL and
+        are not licensed for reuse.
+      </p>
+
+      <h2>Third parties</h2>
+      <p>
+        PhonePad requires the <strong>ViGEmBus</strong> driver, which is
+        separate software by different authors under its own licence and terms.
+        Installing it is your decision.
+      </p>
+      <p>
+        Xbox, Xbox Cloud Gaming, Game Pass and Windows are trademarks of
+        Microsoft Corporation. PhonePad is not affiliated with, endorsed by, or
+        sponsored by Microsoft. Whether you may use PhonePad with a particular
+        service is between you and that service.
+      </p>
+
+      <h2>Acceptable use</h2>
+      <p>
+        Do not use PhonePad to break the rules of a game or service you are
+        using — anti-cheat systems, competitive integrity and the terms of the
+        platforms you play on are your responsibility. PhonePad presents an
+        ordinary controller and does nothing to conceal itself, automate
+        anything, or gain an advantage.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        These terms may change; the date above changes with them, and the
+        history is public in the repository.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Open an issue on <a href={REPO} rel="noopener">the repository</a>.
+      </p>
+    </div>
+  </section>
+</Base>

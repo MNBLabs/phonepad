@@ -1,0 +1,132 @@
+---
+import Base from "../layouts/Base.astro";
+import { GA_ID, ADSENSE_CLIENT, REPO } from "../consts";
+const tracking = Boolean(GA_ID || ADSENSE_CLIENT);
+---
+
+<Base
+  title="Privacy"
+  description="What PhonePad collects: nothing. What this website collects, and how to refuse it."
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">Privacy</h1>
+      <p class="muted small">Last updated 11 September 2026.</p>
+
+      <h2>The app and the companion collect nothing</h2>
+      <p>
+        This is worth stating first because it is the part that matters.
+        PhonePad has <strong>no account system, no server, and no telemetry</strong>.
+        There is nothing to sign up for, nothing to log in to, and no analytics
+        in either the phone app or the Windows companion.
+      </p>
+      <p>
+        The phone talks to your PC directly over your own network. It does not
+        contact us, because there is no "us" for it to contact — no service
+        exists behind PhonePad. You can verify this: the
+        <a href={REPO} rel="noopener">entire source code is public</a>, and the
+        companion never opens an outbound connection.
+      </p>
+
+      <h3>What is stored, and where</h3>
+      <ul>
+        <li>
+          <strong>On your phone</strong> — your layouts, your settings, and a
+          key for each PC you have paired with. In the app's own storage.
+          Uninstalling removes it.
+        </li>
+        <li>
+          <strong>On your PC</strong> — the same pairing key, the name your
+          phone reports, and when it last connected, in a JSON file under
+          <code>%APPDATA%\PhonePad</code>. You can delete it, and "Forget" in
+          the companion removes an individual phone.
+        </li>
+      </ul>
+      <p>Neither is transmitted anywhere.</p>
+
+      <h2>This website</h2>
+      {
+        tracking ? (
+          <>
+            <p>
+              The site is static and hosted on GitHub Pages. It uses:
+            </p>
+            <ul>
+              {GA_ID && (
+                <li>
+                  <strong>Google Analytics</strong>, with IP anonymisation, to
+                  count visits and see which pages are useful.
+                </li>
+              )}
+              {ADSENSE_CLIENT && (
+                <li>
+                  <strong>Google AdSense</strong>, to show advertising on the
+                  documentation and guide pages.
+                </li>
+              )}
+            </ul>
+            <p>
+              Neither loads until you accept the banner. Decline and no
+              analytics or advertising script is fetched at all — the choice is
+              remembered in your browser's local storage, which is the only
+              thing this site stores without asking. Clear your site data to be
+              asked again.
+            </p>
+            <p>
+              Google acts as an independent controller for the data it collects
+              through those services; see
+              <a
+                href="https://policies.google.com/technologies/partner-sites"
+                rel="noopener nofollow">how Google uses data from partner sites</a
+              >.
+            </p>
+          </>
+        ) : (
+          <p>
+            The site is static and hosted on GitHub Pages. It currently runs
+            <strong>no analytics and no advertising</strong>, and sets no cookies.
+            GitHub's own server logs apply, as they do for anything hosted there.
+          </p>
+        )
+      }
+
+      <h2>GitHub</h2>
+      <p>
+        Downloads, issues and discussions happen on GitHub, under
+        <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener nofollow">
+          GitHub's privacy statement</a
+        >. Anything you post there is public and is not ours to delete.
+      </p>
+
+      <h2>Your rights</h2>
+      <p>
+        Where the GDPR or a similar law applies to you, you have rights of
+        access, correction, erasure and objection. In practice there is very
+        little to exercise them against: the app holds no personal data of yours
+        and this site holds nothing beyond what is described above. If you have
+        accepted analytics and want that reversed, decline the banner or clear
+        your site data.
+      </p>
+
+      <h2>Children</h2>
+      <p>
+        PhonePad is not directed at children under 13 and collects no data from
+        anyone.
+      </p>
+
+      <h2>Changes</h2>
+      <p>
+        If this policy changes materially the date above changes with it. The
+        history is in
+        <a href={REPO} rel="noopener">the repository</a>, so you can see exactly
+        what changed and when.
+      </p>
+
+      <h2>Contact</h2>
+      <p>
+        Open an issue on <a href={REPO} rel="noopener">the repository</a>, or use
+        the contact address in the repository profile.
+      </p>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,54 @@
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths: ["site/**", ".github/workflows/site.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # Turns Pages on rather than requiring somebody to find the setting.
+      # Fails while the repository is private on a free plan, which is the
+      # state it ships in; the first run after it goes public succeeds.
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - working-directory: site
+        run: npm ci
+      - working-directory: site
+        run: npm run build
+        env:
+          PUBLIC_ADSENSE_CLIENT: ${{ vars.PUBLIC_ADSENSE_CLIENT }}
+          PUBLIC_ADSENSE_SLOT: ${{ vars.PUBLIC_ADSENSE_SLOT }}
+          PUBLIC_GA_ID: ${{ vars.PUBLIC_GA_ID }}
+          PUBLIC_SPONSORS_URL: ${{ vars.PUBLIC_SPONSORS_URL }}
+          PUBLIC_BMC_URL: ${{ vars.PUBLIC_BMC_URL }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

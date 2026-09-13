@@ -1,0 +1,105 @@
+name: Release
+
+# Runs for a pushed `v*` tag, or by hand for an existing tag. Either way the
+# tag is the source of truth: it is what gets checked out, built and released.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing tag to build and release (for example v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Check the tag exists
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh api "repos/${{ github.repository }}/git/ref/tags/$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "::error::tag '$RELEASE_TAG' does not exist; push the tag first"
+            exit 1
+          fi
+
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Build companion
+        working-directory: companion
+        run: cargo build --release --workspace
+
+      # Release builds fall back to the debug key when key.properties is
+      # absent, which must never leave this workflow. The keystore comes from
+      # repository secrets.
+      - name: Restore signing key
+        if: env.KEYSTORE_BASE64 != ''
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        shell: bash
+        run: |
+          mkdir -p phone/android/keystore
+          echo "$KEYSTORE_BASE64" | base64 -d > phone/android/keystore/phonepad-release.jks
+          cat > phone/android/key.properties <<KEY
+          storeFile=keystore/phonepad-release.jks
+          storePassword=${{ secrets.ANDROID_STORE_PASSWORD }}
+          keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}
+          keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
+          KEY
+
+      - name: Build APK
+        working-directory: phone
+        run: flutter build apk --release --target-platform android-arm64
+
+      # apksigner rather than keytool: the APK carries a v2 signature only, and
+      # keytool cannot read those, so a check based on it would pass anything.
+      - name: Refuse to ship an APK not signed with the release key
+        shell: bash
+        run: |
+          apk=phone/build/app/outputs/flutter-apk/app-release.apk
+          sdk=$(cygpath -u "$ANDROID_HOME")
+          apksigner=$(ls "$sdk"/build-tools/*/apksigner.bat | sort -V | tail -1)
+          certs=$("$apksigner" verify --print-certs "$apk")
+          echo "$certs"
+          if echo "$certs" | grep -qi "CN=Android Debug"; then
+            echo "::error::APK is signed with the debug key"
+            exit 1
+          fi
+          if ! echo "$certs" | grep -q "CN=PhonePad"; then
+            echo "::error::APK is not signed with the PhonePad release key"
+            exit 1
+          fi
+
+      - name: Stage artifacts
+        shell: bash
+        run: |
+          mkdir -p out
+          cp phone/build/app/outputs/flutter-apk/app-release.apk out/PhonePad-arm64.apk
+          cp companion/target/release/phonepad-companion.exe out/PhonePad-Companion.exe
+          cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: PhonePad ${{ env.RELEASE_TAG }}
+          draft: true
+          files: out/*
+          fail_on_unmatched_files: true
+          body_path: CHANGELOG.md

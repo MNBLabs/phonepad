@@ -1,0 +1,132 @@
+---
+import Base from "../layouts/Base.astro";
+import { GA_ID, ADSENSE_CLIENT } from "../consts";
+const tracking = Boolean(GA_ID || ADSENSE_CLIENT);
+---
+
+<Base
+  title="Cookies"
+  description="What this website stores in your browser, and how to refuse it. The PhonePad app itself uses no cookies at all."
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">Cookies</h1>
+      <p class="muted small">Last updated 11 September 2026.</p>
+
+      <p>
+        The PhonePad <strong>app and companion use no cookies</strong> and no
+        web technology at all. This page is only about the website.
+      </p>
+
+      {
+        tracking ? (
+          <>
+            <h2>What is set, and when</h2>
+            <p>
+              Nothing is set until you choose. On your first visit a banner asks
+              whether analytics and advertising are acceptable, and no
+              third-party script is loaded before you answer.
+            </p>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>What</th>
+                    <th>Purpose</th>
+                    <th>Set by</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>
+                      <code>pp-consent</code>
+                    </td>
+                    <td>
+                      Remembers your answer to the banner so you are not asked
+                      again. Local storage, not a cookie, and never sent to a
+                      server.
+                    </td>
+                    <td>This site</td>
+                  </tr>
+                  {GA_ID && (
+                    <tr>
+                      <td>
+                        <code>_ga</code>, <code>_ga_*</code>
+                      </td>
+                      <td>
+                        Counting visits and which pages get read. IP addresses
+                        are anonymised.
+                      </td>
+                      <td>Google Analytics</td>
+                    </tr>
+                  )}
+                  {ADSENSE_CLIENT && (
+                    <tr>
+                      <td>Advertising cookies</td>
+                      <td>
+                        Serving and measuring the ads on documentation and guide
+                        pages.
+                      </td>
+                      <td>Google AdSense</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <h2>Refusing them</h2>
+            <p>
+              Click <strong>Decline</strong> on the banner. Nothing beyond
+              <code>pp-consent</code> is stored and no analytics or advertising
+              script is fetched. Every part of the site works exactly the same.
+            </p>
+            <p>
+              To change your mind later, clear this site's data in your browser
+              and answer the banner differently. Blocking third-party cookies or
+              using a content blocker also works — the site does not detect or
+              complain about either.
+            </p>
+
+            <h2>Where they go</h2>
+            <p>
+              The analytics and advertising cookies are set by Google, which acts
+              as an independent controller for that data. See{" "}
+              <a
+                href="https://policies.google.com/technologies/partner-sites"
+                rel="noopener nofollow"
+              >
+                how Google uses data from partner sites
+              </a>
+              .
+            </p>
+          </>
+        ) : (
+          <>
+            <h2>Currently: none</h2>
+            <p>
+              This site sets <strong>no cookies</strong> and runs no analytics or
+              advertising. There is no banner, because there is nothing to ask
+              you about.
+            </p>
+            <p>
+              If that changes, this page and the
+              <a href="/privacy/">privacy policy</a> change with it, a banner
+              appears, and nothing loads until you accept it.
+            </p>
+          </>
+        )
+      }
+
+      <h2>Hosting</h2>
+      <p>
+        The site is served from GitHub Pages. GitHub keeps its own server logs
+        for security and abuse prevention, as it does for everything it hosts;
+        that is outside our control and is covered by
+        <a
+          href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement"
+          rel="noopener nofollow">GitHub's privacy statement</a
+        >.
+      </p>
+    </div>
+  </section>
+</Base>

@@ -1,0 +1,40 @@
+PhonePad
+Copyright (C) 2026 DynShift
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. See LICENSE.
+
+The wire protocol under protocol/ is licensed separately, under Apache-2.0, so
+that anyone may write a compatible client or companion without their work
+becoming subject to the GPL. See protocol/LICENSE.
+
+"PhonePad" and "DynShift" are trademarks of the PhonePad maintainer and are
+not licensed by either of the above. See TRADEMARK.md.
+
+---
+
+Third-party components
+
+The Windows companion links the following Rust crates. Their licences are
+reproduced in full by `cargo license` and are available from crates.io.
+
+  vigem-client            MIT
+  hmac, sha2, hkdf        MIT OR Apache-2.0
+  x25519-dalek            BSD-3-Clause
+  rand_core               MIT OR Apache-2.0
+  serde, serde_json       MIT OR Apache-2.0
+  eframe, egui            MIT OR Apache-2.0
+  windows-sys             MIT OR Apache-2.0
+
+The Android app is built with Flutter (BSD-3-Clause) and uses:
+
+  crypto, cryptography    Apache-2.0 / BSD-3-Clause
+  path_provider           BSD-3-Clause
+
+PhonePad requires the ViGEmBus driver, which is distributed separately by its
+own authors under the BSD-3-Clause licence and is not included here.
+
+Xbox, Xbox Cloud Gaming and Windows are trademarks of Microsoft Corporation.
+PhonePad is not affiliated with, endorsed by, or sponsored by Microsoft.

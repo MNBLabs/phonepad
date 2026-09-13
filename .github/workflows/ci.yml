@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  companion:
+    name: Companion (Rust)
+    # The companion talks to ViGEmBus and windows-sys, so it only builds on
+    # Windows. There is no point pretending otherwise with a cross-platform job.
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: companion
+      - name: Test
+        working-directory: companion
+        run: cargo test --workspace
+      - name: Clippy
+        working-directory: companion
+        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Format
+        working-directory: companion
+        run: cargo fmt --all --check
+
+  app:
+    name: App (Flutter)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+      - name: Dependencies
+        working-directory: phone
+        run: flutter pub get
+      - name: Analyze
+        working-directory: phone
+        run: dart analyze
+      - name: Test
+        working-directory: phone
+        run: flutter test
+
+  protocol:
+    name: Protocol vectors are current
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: companion
+      # Both codecs are asserted against protocol/vectors.json. If the committed
+      # file no longer matches what the generator produces, the two suites are
+      # testing against a fixture that no longer describes the wire format, and
+      # they can both pass while disagreeing with each other.
+      - name: Regenerate and compare
+        working-directory: companion
+        shell: bash
+        run: |
+          cargo run -p pp-protocol --example gen_vectors > /tmp/vectors.json
+          diff -u ../protocol/vectors.json /tmp/vectors.json || {
+            echo "::error::protocol/vectors.json is stale — regenerate it"
+            exit 1
+          }
