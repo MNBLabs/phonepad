@@ -59,6 +59,12 @@ const schema = {
       has chosen, and the choice is paper.
     */}
     <meta name="color-scheme" content="light" />
+    {/*
+      Site ownership for AdSense. A static tag, not a script: it loads nothing
+      and is unaffected by consent, so it is safe to emit whenever a publisher
+      id is configured.
+    */}
+    {ADSENSE_CLIENT && <meta name="google-adsense-account" content={ADSENSE_CLIENT} />}
     <link
       rel="preload"
       href="/fonts/BricolageDisplay-ExtraBold.woff2"
