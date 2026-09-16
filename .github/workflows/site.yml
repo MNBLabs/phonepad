@@ -38,7 +38,7 @@ jobs:
           PUBLIC_ADSENSE_SLOT: ${{ vars.PUBLIC_ADSENSE_SLOT }}
           PUBLIC_GA_ID: ${{ vars.PUBLIC_GA_ID }}
           PUBLIC_SPONSORS_URL: ${{ vars.PUBLIC_SPONSORS_URL }}
-          PUBLIC_BMC_URL: ${{ vars.PUBLIC_BMC_URL }}
+          PUBLIC_KOFI_URL: ${{ vars.PUBLIC_KOFI_URL }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site/dist

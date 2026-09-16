@@ -201,8 +201,22 @@ fork the code freely, but give your fork its own name. See
 ## Supporting it
 
 PhonePad is free and open source, and the controller is not going behind a
-paywall. If it saved you buying a controller, you can
-[support development](https://phonepad.dynshift.com/support/).
+paywall. If it saved you buying a controller, you can support development:
+
+- [**GitHub Sponsors**](https://github.com/sponsors/MNBLabs) — if you already
+  use GitHub and want to support open-source development directly through it
+- [**Ko-fi**](https://ko-fi.com/nishanbhuinya) — a simple external option that
+  takes PayPal and the other payment methods available to you
+
+Neither unlocks anything. Details on the
+[support page](https://phonepad.dynshift.com/support/).
+
+## Who makes it
+
+PhonePad is created and maintained by [Nishan Bhuinya](https://github.com/nishanbhuinya)
+([@nishanbhuinya](https://www.instagram.com/nishanbhuinya/)) and published under
+[DynShift](https://dynshift.com) ([@dynshift](https://www.instagram.com/dynshift/))
+through the MNBLabs account. See [AUTHORS.md](AUTHORS.md).
 
 ---
 

@@ -29,7 +29,11 @@ Use Discussions rather than issues. Issues are for things that are broken.
 PhonePad is free and open source, and stays that way. If it saved you buying a
 controller, you can support development:
 
-- **GitHub Sponsors** — see the Sponsor button on this repository
-- **Buy Me a Coffee** — linked from [phonepad.dynshift.com/support](https://phonepad.dynshift.com/support/)
+- **[GitHub Sponsors](https://github.com/sponsors/MNBLabs)** — if you already
+  use GitHub and want to support open-source development directly through it
+- **[Ko-fi](https://ko-fi.com/nishanbhuinya)** — a simple external option that
+  takes PayPal and the other payment methods available to you
+
+Both are described on [phonepad.dynshift.com/support](https://phonepad.dynshift.com/support/).
 
 Neither unlocks anything. The controller is not going behind a paywall.

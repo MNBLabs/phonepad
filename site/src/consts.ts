@@ -38,4 +38,11 @@ export const ADSENSE_CLIENT = import.meta.env.PUBLIC_ADSENSE_CLIENT ?? "";
 export const ADSENSE_SLOT = import.meta.env.PUBLIC_ADSENSE_SLOT ?? "";
 export const GA_ID = import.meta.env.PUBLIC_GA_ID ?? "";
 export const SPONSORS = import.meta.env.PUBLIC_SPONSORS_URL ?? "";
-export const BMC = import.meta.env.PUBLIC_BMC_URL ?? "";
+export const KOFI = import.meta.env.PUBLIC_KOFI_URL ?? "";
+
+/** Where the people behind the project are, for the footer. */
+export const AUTHOR = "Nishan Bhuinya";
+export const AUTHOR_GITHUB = "https://github.com/nishanbhuinya";
+export const AUTHOR_INSTAGRAM = "https://www.instagram.com/nishanbhuinya/";
+export const DYNSHIFT = "https://dynshift.com";
+export const DYNSHIFT_INSTAGRAM = "https://www.instagram.com/dynshift/";

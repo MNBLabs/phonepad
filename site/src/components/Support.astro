@@ -3,8 +3,7 @@
  * One support call to action. Never more than one per page, and never on the
  * page someone is on because something is broken.
  */
-import { SPONSORS, BMC, REPO } from "../consts";
-const sponsors = SPONSORS || `${REPO}/../sponsors`;
+import { SPONSORS, KOFI, REPO } from "../consts";
 ---
 
 <div class="support">
@@ -15,8 +14,8 @@ const sponsors = SPONSORS || `${REPO}/../sponsors`;
   </p>
   <div class="row">
     {SPONSORS && <a class="btn btn-ghost" href={SPONSORS} rel="noopener">GitHub Sponsors</a>}
-    {BMC && <a class="btn btn-ghost" href={BMC} rel="noopener">Buy me a coffee</a>}
-    {!SPONSORS && !BMC && (
+    {KOFI && <a class="btn btn-ghost" href={KOFI} rel="noopener">Support on Ko-fi</a>}
+    {!SPONSORS && !KOFI && (
       <a class="btn btn-ghost" href={REPO} rel="noopener">Star it on GitHub</a>
     )}
   </div>

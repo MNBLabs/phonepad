@@ -1,6 +1,17 @@
 ---
 import "../styles/global.css";
-import { SITE_NAME, DESCRIPTION, REPO, GA_ID, ADSENSE_CLIENT } from "../consts";
+import {
+  SITE_NAME,
+  DESCRIPTION,
+  REPO,
+  GA_ID,
+  ADSENSE_CLIENT,
+  AUTHOR,
+  AUTHOR_GITHUB,
+  AUTHOR_INSTAGRAM,
+  DYNSHIFT,
+  DYNSHIFT_INSTAGRAM,
+} from "../consts";
 
 interface Props {
   title?: string;
@@ -219,10 +230,16 @@ const schema = {
             </ul>
           </div>
         </div>
+        <p style="margin:0 0 8px">
+          PhonePad by <strong><a href={DYNSHIFT} rel="noopener">DynShift</a></strong>,
+          made by <a href={AUTHOR_GITHUB} rel="noopener">{AUTHOR}</a>.
+          <a href={AUTHOR_INSTAGRAM} rel="noopener">@nishanbhuinya</a> ·
+          <a href={DYNSHIFT_INSTAGRAM} rel="noopener">@dynshift</a> on Instagram.
+        </p>
         <p style="margin:0">
-          PhonePad by <strong>DynShift</strong>. Free and open source under
-          GPL-3.0. Not affiliated with, endorsed by, or sponsored by Microsoft.
-          Xbox and Windows are trademarks of Microsoft Corporation.
+          Free and open source under GPL-3.0. Not affiliated with, endorsed
+          by, or sponsored by Microsoft. Xbox and Windows are trademarks of
+          Microsoft Corporation.
         </p>
       </div>
     </footer>

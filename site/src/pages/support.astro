@@ -1,6 +1,6 @@
 ---
 import Base from "../layouts/Base.astro";
-import { REPO, ISSUES, DISCUSSIONS, SPONSORS, BMC } from "../consts";
+import { REPO, ISSUES, DISCUSSIONS, SPONSORS, KOFI, AUTHOR, AUTHOR_GITHUB } from "../consts";
 ---
 
 <Base
@@ -31,26 +31,46 @@ import { REPO, ISSUES, DISCUSSIONS, SPONSORS, BMC } from "../consts";
         a paywall. There is no premium tier holding your D-pad hostage.
       </p>
       <p>
-        It is also a side project, built and maintained by one person in
-        evenings. If it saved you buying a controller — or saved you the
-        annoyance of one being in the wrong room — you can help pay for the
-        time.
+        It is also a side project, built and maintained by one person —
+        <a href={AUTHOR_GITHUB} rel="noopener">{AUTHOR}</a> — in evenings. If
+        it saved you buying a controller, or saved you the annoyance of one
+        being in the wrong room, you can help pay for the time. Two ways,
+        pick whichever suits you:
       </p>
 
       {
-        SPONSORS || BMC ? (
-          <p style="display:flex;gap:12px;flex-wrap:wrap">
-            {SPONSORS && (
-              <a class="btn btn-primary" href={SPONSORS} rel="noopener">
-                GitHub Sponsors
-              </a>
-            )}
-            {BMC && (
-              <a class="btn btn-ghost" href={BMC} rel="noopener">
-                Buy me a coffee
-              </a>
-            )}
-          </p>
+        SPONSORS || KOFI ? (
+          <>
+            <ul>
+              {SPONSORS && (
+                <li>
+                  <strong>GitHub Sponsors</strong> — if you already use GitHub
+                  and want to support open-source development directly
+                  through it. Monthly or one-off, and a sponsor badge on your
+                  profile.
+                </li>
+              )}
+              {KOFI && (
+                <li>
+                  <strong>Ko-fi</strong> — a simple external option that takes
+                  PayPal and the other payment methods available to you, with
+                  no account needed.
+                </li>
+              )}
+            </ul>
+            <p style="display:flex;gap:12px;flex-wrap:wrap">
+              {SPONSORS && (
+                <a class="btn btn-primary" href={SPONSORS} rel="noopener">
+                  GitHub Sponsors
+                </a>
+              )}
+              {KOFI && (
+                <a class="btn btn-ghost" href={KOFI} rel="noopener">
+                  Support on Ko-fi
+                </a>
+              )}
+            </p>
+          </>
         ) : (
           <p class="muted">
             Sponsorship links are not set up yet. Until they are, a star on{" "}
