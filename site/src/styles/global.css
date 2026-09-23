@@ -446,6 +446,20 @@ footer.site a {
 footer.site a:hover {
   color: var(--ink);
 }
+/* The one control in the footer that is a button, not a link: it reopens
+   Google's advertising consent message. It should read as the links beside
+   it, because to the reader it is one. */
+footer.site button {
+  font: inherit;
+  color: var(--ink2);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+footer.site button:hover {
+  color: var(--ink);
+}
 footer.site .cols {
   display: grid;
   gap: 28px;

@@ -61,16 +61,33 @@ const tracking = Boolean(GA_ID || ADSENSE_CLIENT);
               {ADSENSE_CLIENT && (
                 <li>
                   <strong>Google AdSense</strong>, to show advertising on the
-                  documentation and guide pages.
+                  documentation and guide pages. Its script loads on every page
+                  of this site, because it is also what asks the consent
+                  question above; no advertisement appears outside those pages.
                 </li>
               )}
             </ul>
             <p>
-              Neither loads until you accept the banner. Decline and no
-              analytics or advertising script is fetched at all — the choice is
-              remembered in your browser's local storage, which is the only
-              thing this site stores without asking. Clear your site data to be
-              asked again.
+              {GA_ID && (
+                <>
+                  Analytics loads only if you accept the banner. Decline and no
+                  analytics script is fetched at all; the choice is remembered
+                  in your browser's local storage, and clearing this site's
+                  data asks again.{" "}
+                </>
+              )}
+              {ADSENSE_CLIENT && (
+                <>
+                  Advertising is handled by Google's own consent message, which
+                  is shown to readers in the EEA, the UK and Switzerland before
+                  anything is used to personalise an advertisement. That
+                  message is a consent platform certified by Google, which a
+                  banner of ours is not, so it rather than we asks the
+                  question. <strong>Privacy settings</strong> in the footer
+                  reopens it; the control appears only where the message
+                  applies.
+                </>
+              )}
             </p>
             <p>
               Google acts as an independent controller for the data it collects

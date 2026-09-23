@@ -76,6 +76,26 @@ const schema = {
       id is configured.
     */}
     {ADSENSE_CLIENT && <meta name="google-adsense-account" content={ADSENSE_CLIENT} />}
+    {
+      /*
+        The AdSense loader. Not gated: this script is what delivers Google's
+        consent message to visitors in the EEA, the UK and Switzerland, and
+        that message is a Google-certified consent platform where the banner
+        below is not. Gating it meant the crawler found no ad code at all and
+        the people the regulation protects were never asked. Analytics is a
+        different case and stays behind the banner.
+      */
+    }
+    {
+      ADSENSE_CLIENT && (
+        <script
+          is:inline
+          async
+          src={`https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`}
+          crossorigin="anonymous"
+        />
+      )
+    }
     <link
       rel="preload"
       href="/fonts/BricolageDisplay-ExtraBold.woff2"
@@ -106,36 +126,27 @@ const schema = {
 
     {
       /*
-        Analytics and ads load only when their ids are configured, and only
-        after consent. An unconfigured build ships no third-party script at
-        all rather than a placeholder that half-works.
+        Analytics loads only when its id is configured, and only after
+        consent. An unconfigured build ships no analytics script at all
+        rather than a placeholder that half-works.
       */
     }
     {
-      (GA_ID || ADSENSE_CLIENT) && (
+      GA_ID && (
         <script
           is:inline
-          define:vars={{ GA_ID, ADSENSE_CLIENT }}
+          define:vars={{ GA_ID }}
           set:html={`
         (function () {
           if (localStorage.getItem('pp-consent') !== 'yes') return;
-          if (GA_ID) {
-            var s = document.createElement('script');
-            s.async = true;
-            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
-            document.head.appendChild(s);
-            window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
-            gtag('js', new Date());
-            gtag('config', GA_ID, { anonymize_ip: true });
-          }
-          if (ADSENSE_CLIENT) {
-            var a = document.createElement('script');
-            a.async = true;
-            a.crossOrigin = 'anonymous';
-            a.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=' + ADSENSE_CLIENT;
-            document.head.appendChild(a);
-          }
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+          document.head.appendChild(s);
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', GA_ID, { anonymize_ip: true });
         })();
       `}
         />
@@ -227,6 +238,15 @@ const schema = {
               <li>
                 <a href={`${REPO}/blob/main/TRADEMARK.md`} rel="noopener">Trademark</a>
               </li>
+              {/*
+                Reopens Google's consent message for advertising. Hidden
+                unless that message applies to the reader, which is Google's
+                own pattern: a control for a question nobody was asked is
+                noise.
+              */}
+              <li id="pp-privacy-settings-item" hidden>
+                <button type="button" id="pp-privacy-settings">Privacy settings</button>
+              </li>
             </ul>
           </div>
         </div>
@@ -245,15 +265,16 @@ const schema = {
     </footer>
 
     {
-      (GA_ID || ADSENSE_CLIENT) && (
+      GA_ID && (
         <div
           id="pp-consent"
           hidden
           style="position:fixed;inset:auto 16px 16px;max-width:520px;margin-inline:auto;background:var(--raised);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);padding:18px;z-index:50;font-size:.92rem"
         >
           <p style="margin:0 0 12px;color:var(--ink2)">
-            This site would like to use cookies for analytics and advertising.
-            The app itself collects nothing. See the{" "}
+            This site would like to count visits, using Google Analytics. The
+            app itself collects nothing, and declining changes nothing about
+            how the site works. See the{" "}
             <a href="/privacy/">privacy policy</a>.
           </p>
           <div style="display:flex;gap:10px">
@@ -274,6 +295,29 @@ const schema = {
               if (v === "yes") location.reload();
             });
           })();
+        </script>
+      )
+    }
+    {
+      ADSENSE_CLIENT && (
+        <script is:inline>
+          {`
+        (function () {
+          var item = document.getElementById('pp-privacy-settings-item');
+          var button = document.getElementById('pp-privacy-settings');
+          if (!item || !button) return;
+          button.addEventListener('click', function () {
+            if (window.googlefc && window.googlefc.showRevocationMessage) {
+              window.googlefc.showRevocationMessage();
+            }
+          });
+          window.googlefc = window.googlefc || {};
+          window.googlefc.callbackQueue = window.googlefc.callbackQueue || [];
+          window.googlefc.callbackQueue.push({
+            CONSENT_API_READY: function () { item.hidden = false; }
+          });
+        })();
+      `}
         </script>
       )
     }
