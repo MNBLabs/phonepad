@@ -16,6 +16,9 @@ export default defineConfig({
   site: SITE,
   trailingSlash: "always",
   build: { format: "directory" },
+  // Astro 7 defaults to JSX-style whitespace, which drops the space between a
+  // line of text and a link that starts the next line. Keep Astro 5's rule.
+  compressHTML: true,
   integrations: [sitemap()],
   // No client framework, no hydration. The whole site is static HTML with one
   // small inline script; anything more would be cost with no benefit.

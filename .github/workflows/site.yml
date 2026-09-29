@@ -17,6 +17,9 @@ concurrency:
 
 jobs:
   build:
+    # The site deploys from the public repository only; the private working
+    # repository has no Pages and must never publish one.
+    if: github.repository == 'MNBLabs/phonepad'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
