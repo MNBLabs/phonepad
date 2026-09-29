@@ -1,17 +1,18 @@
 ---
 import Base from "../layouts/Base.astro";
-import { GA_ID, ADSENSE_CLIENT, REPO } from "../consts";
-const tracking = Boolean(GA_ID || ADSENSE_CLIENT);
+import { GA_ID, ADSENSE_CLIENT, REPO, CONTACT, CONTROLLER, POLICY_DATE } from "../consts";
+const analytics = Boolean(GA_ID);
+const ads = Boolean(ADSENSE_CLIENT);
 ---
 
 <Base
   title="Privacy"
-  description="What PhonePad collects: nothing. What this website collects, and how to refuse it."
+  description="What PhonePad collects: nothing. What this website collects, why, for how long, and your choices and rights, including under India's DPDP Act."
 >
   <section>
     <div class="wrap prose">
       <h1 style="font-size:clamp(2rem,5vw,3rem)">Privacy</h1>
-      <p class="muted small">Last updated 11 September 2026.</p>
+      <p class="muted small">Last updated {POLICY_DATE}.</p>
 
       <h2>The app and the companion collect nothing</h2>
       <p>
@@ -22,127 +23,217 @@ const tracking = Boolean(GA_ID || ADSENSE_CLIENT);
       </p>
       <p>
         The phone talks to your PC directly over your own network. It does not
-        contact us, because there is no "us" for it to contact — no service
-        exists behind PhonePad. You can verify this: the
-        <a href={REPO} rel="noopener">entire source code is public</a>, and the
-        companion never opens an outbound connection.
+        contact us, because no service exists behind PhonePad. You can verify
+        this: the <a href={REPO} rel="noopener">entire source code is public</a>,
+        and the companion never opens an outbound connection.
       </p>
 
       <h3>What is stored, and where</h3>
       <ul>
         <li>
-          <strong>On your phone</strong> — your layouts, your settings, and a
-          key for each PC you have paired with. In the app's own storage.
+          <strong>On your phone</strong>: your layouts, your settings, and a key
+          for each PC you have paired with, in the app's own storage.
           Uninstalling removes it.
         </li>
         <li>
-          <strong>On your PC</strong> — the same pairing key, the name your
-          phone reports, and when it last connected, in a JSON file under
-          <code>%APPDATA%\PhonePad</code>. You can delete it, and "Forget" in
-          the companion removes an individual phone.
+          <strong>On your PC</strong>: the same pairing key, the name your phone
+          reports, and when it last connected, in a JSON file under
+          <code>%APPDATA%\PhonePad</code>. You can delete it, and "Forget" in the
+          companion removes an individual phone.
         </li>
       </ul>
       <p>Neither is transmitted anywhere.</p>
 
       <h2>This website</h2>
-      {
-        tracking ? (
-          <>
-            <p>
-              The site is static and hosted on GitHub Pages. It uses:
-            </p>
-            <ul>
-              {GA_ID && (
-                <li>
-                  <strong>Google Analytics</strong>, with IP anonymisation, to
-                  count visits and see which pages are useful.
-                </li>
-              )}
-              {ADSENSE_CLIENT && (
-                <li>
-                  <strong>Google AdSense</strong>, to show advertising on the
-                  documentation and guide pages. Its script loads on every page
-                  of this site, because it is also what asks the consent
-                  question above; no advertisement appears outside those pages.
-                </li>
-              )}
-            </ul>
-            <p>
-              {GA_ID && (
-                <>
-                  Analytics loads only if you accept the banner. Decline and no
-                  analytics script is fetched at all; the choice is remembered
-                  in your browser's local storage, and clearing this site's
-                  data asks again.{" "}
-                </>
-              )}
-              {ADSENSE_CLIENT && (
-                <>
-                  Advertising is handled by Google's own consent message, which
-                  is shown to readers in the EEA, the UK and Switzerland before
-                  anything is used to personalise an advertisement. That
-                  message is a consent platform certified by Google, which a
-                  banner of ours is not, so it rather than we asks the
-                  question. <strong>Privacy settings</strong> in the footer
-                  reopens it; the control appears only where the message
-                  applies.
-                </>
-              )}
-            </p>
-            <p>
-              Google acts as an independent controller for the data it collects
-              through those services; see
-              <a
-                href="https://policies.google.com/technologies/partner-sites"
-                rel="noopener nofollow">how Google uses data from partner sites</a
-              >.
-            </p>
-          </>
-        ) : (
-          <p>
-            The site is static and hosted on GitHub Pages. It currently runs
-            <strong>no analytics and no advertising</strong>, and sets no cookies.
-            GitHub's own server logs apply, as they do for anything hosted there.
-          </p>
-        )
-      }
 
-      <h2>GitHub</h2>
+      <h3>Who is responsible</h3>
       <p>
-        Downloads, issues and discussions happen on GitHub, under
-        <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener nofollow">
-          GitHub's privacy statement</a
-        >. Anything you post there is public and is not ours to delete.
+        PhonePad is by <strong>{CONTROLLER}</strong>, an independent software
+        studio based in India, which decides what this website collects and
+        why: the controller under the GDPR, and the Data Fiduciary under India's
+        Digital Personal Data Protection Act 2023. Contact:
+        <a href={`mailto:${CONTACT}`}>{CONTACT}</a>, or the
+        <a href="/contact/">contact and grievance page</a>.
+      </p>
+
+      <h3>What is collected, and why</h3>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>What</th><th>Why</th><th>Basis</th><th>Who handles it</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>IP address and browser details, in server logs</td>
+              <td>Delivering the pages and keeping the host secure</td>
+              <td>Legitimate interest</td>
+              <td>GitHub Pages, which hosts the site. We do not receive these logs.</td>
+            </tr>
+            <tr>
+              <td>Your privacy choice, in local storage</td>
+              <td>Not asking you again</td>
+              <td>Strictly necessary</td>
+              <td>Your device only</td>
+            </tr>
+            {analytics && (
+              <tr>
+                <td>Pages viewed, referrer, device type, approximate country, a random visitor identifier</td>
+                <td>Counting visits and seeing which guides help</td>
+                <td>Your consent</td>
+                <td>Google Analytics, on DynShift's behalf</td>
+              </tr>
+            )}
+            {ads && (
+              <tr>
+                <td>Advertising identifiers in cookies, the page, approximate location</td>
+                <td>Showing, measuring and protecting advertising; personalising it where allowed</td>
+                <td>Your consent in the EEA, the UK and Switzerland; elsewhere legitimate interest, with the opt-outs below</td>
+                <td>Google, as an independent controller</td>
+              </tr>
+            )}
+            <tr>
+              <td>Anything you post in issues or discussions</td>
+              <td>Bug reports and questions</td>
+              <td>Your choice to post</td>
+              <td>GitHub; it is public</td>
+            </tr>
+            <tr>
+              <td>Your email and message, if you write to us</td>
+              <td>Answering you</td>
+              <td>Legitimate interest</td>
+              <td>DynShift</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      {analytics && (
+        <>
+          <h3>Analytics</h3>
+          <p>
+            Google Analytics 4 loads only after you allow it: in the EEA, the UK
+            and Switzerland through Google's consent message, elsewhere through a
+            two-button question from this site. Google Analytics does not store
+            your IP address; it uses it to estimate your country and discards it.
+            Google signals and detailed location and device data are off, and
+            event data is kept for two months. See
+            <a href="https://policies.google.com/technologies/partner-sites" rel="noopener nofollow"
+              >how Google uses information from sites or apps that use its services</a
+            >.
+          </p>
+        </>
+      )}
+
+      {ads && (
+        <>
+          <h3>Advertising</h3>
+          <p>
+            The documentation, troubleshooting and guide pages carry one
+            advertisement each from <strong>Google AdSense</strong>, labelled
+            <em>Advertisement</em>. None on the home page, the setup and download
+            path, or any legal page. Google may set cookies or read similar
+            identifiers to serve, measure and protect those ads, and, where you
+            have allowed it, to personalise them, under
+            <a href="https://policies.google.com/technologies/partner-sites" rel="noopener nofollow"
+              >its own policy</a
+            >. The cookies are listed on the <a href="/cookies/">cookies page</a>.
+          </p>
+        </>
+      )}
+
+      <h2 id="your-choices">Your choices</h2>
+      <ul>
+        <li>
+          <strong>Privacy settings</strong>, in the footer of every page, shows
+          what applies to you and lets you change it at any time. Withdrawing
+          consent is as easy as giving it.
+        </li>
+        {ads && (
+          <li>
+            <strong>EEA, UK, Switzerland</strong>: Google's consent message asks
+            on your first visit, with "Consent", "Do not consent" and "Manage
+            options". Nothing that needs consent is used before you answer.
+          </li>
+        )}
+        {ads && (
+          <li>
+            <strong>US states with privacy laws</strong>: use
+            <strong>Do Not Sell or Share My Personal Information</strong> in the
+            footer (it appears where it applies).
+          </li>
+        )}
+        <li>
+          <strong>Global Privacy Control</strong>: if your browser sends it, this
+          site treats it as an opt-out everywhere: no analytics and no
+          personalised advertising.
+        </li>
+        <li>
+          <strong>Anywhere</strong>: turn off personalised ads at
+          <a href="https://myadcenter.google.com/" rel="noopener nofollow">My Ad Center</a>,
+          block cookies, or use an ad blocker. Every part of the site works the same.
+        </li>
+      </ul>
+
+      <h2>How long it is kept</h2>
+      <ul>
+        <li>Your privacy choice: up to 12 months in your browser, then you are asked again.</li>
+        {analytics && <li>Analytics event data: 2 months at Google; only totals remain after that.</li>}
+        {ads && <li>Advertising cookies: as listed on the <a href="/cookies/">cookies page</a>.</li>}
+        <li>Emails: deleted within 12 months of the last message unless needed for a legal claim.</li>
+      </ul>
+
+      <h2>Who else receives data</h2>
+      <p>
+        Google{analytics || ads ? " (analytics and advertising)" : ""} and GitHub
+        (hosting, downloads, issues). Both process data in the United States and
+        elsewhere under their own safeguards for international transfers,
+        including the EU Standard Contractual Clauses and the EU-US Data Privacy
+        Framework. Nobody else.
       </p>
 
       <h2>Your rights</h2>
       <p>
-        Where the GDPR or a similar law applies to you, you have rights of
-        access, correction, erasure and objection. In practice there is very
-        little to exercise them against: the app holds no personal data of yours
-        and this site holds nothing beyond what is described above. If you have
-        accepted analytics and want that reversed, decline the banner or clear
-        your site data.
+        Wherever you are, you can ask what DynShift holds about you and have it
+        corrected or deleted: write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>,
+        and you will have an answer within 30 days. In practice there is very
+        little: the app holds nothing of yours on our side, and this site holds
+        only what is described above.
+      </p>
+      <h3>India (DPDP Act 2023)</h3>
+      <p>
+        You may ask for a summary of your personal data and its processing, and
+        for its correction, completion, updating or erasure; withdraw consent
+        at any time, as easily as you gave it; nominate someone to exercise your
+        rights if you die or become unable to; and have a grievance answered.
+        Raise it first through the <a href="/contact/">contact and grievance page</a>;
+        if you are not satisfied, you may complain to the Data Protection Board
+        of India. This notice is available in English or any language in the
+        Eighth Schedule to the Constitution on request.
+      </p>
+      <h3>EEA, UK and Switzerland</h3>
+      <p>
+        Access, rectification, erasure, restriction, portability, objection,
+        and withdrawal of consent at any time. You may complain to your data
+        protection authority.
+      </p>
+      <h3>United States, Brazil, Canada and elsewhere</h3>
+      <p>
+        DynShift does not sell personal data for money. Opt out of advertising
+        "sharing" as described above. The same access, correction and deletion
+        rights apply to you.
       </p>
 
       <h2>Children</h2>
       <p>
-        PhonePad is not directed at children under 13 and collects no data from
-        anyone.
+        PhonePad is not directed at children, and neither the app nor this site
+        knowingly collects data from anyone under 18.
       </p>
 
       <h2>Changes</h2>
       <p>
-        If this policy changes materially the date above changes with it. The
-        history is in
+        If this policy changes the date above changes with it. The history is in
         <a href={REPO} rel="noopener">the repository</a>, so you can see exactly
         what changed and when.
-      </p>
-
-      <h2>Contact</h2>
-      <p>
-        Open an issue on <a href={REPO} rel="noopener">the repository</a>, or use
-        the contact address in the repository profile.
       </p>
     </div>
   </section>

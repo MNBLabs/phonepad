@@ -40,6 +40,14 @@ export const GA_ID = import.meta.env.PUBLIC_GA_ID ?? "";
 export const SPONSORS = import.meta.env.PUBLIC_SPONSORS_URL ?? "";
 export const KOFI = import.meta.env.PUBLIC_KOFI_URL ?? "";
 
+/**
+ * The data controller as named in the policies: PhonePad is by DynShift, and
+ * DynShift is not a registered company (yet). The contact is DynShift's.
+ */
+export const CONTROLLER = "DynShift";
+export const CONTACT = "official@dynshift.com";
+export const POLICY_DATE = "30 September 2026";
+
 /** Where the people behind the project are, for the footer. */
 export const AUTHOR = "Nishan Bhuinya";
 export const AUTHOR_GITHUB = "https://github.com/nishanbhuinya";

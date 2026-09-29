@@ -78,12 +78,24 @@ const schema = {
     {ADSENSE_CLIENT && <meta name="google-adsense-account" content={ADSENSE_CLIENT} />}
     {
       /*
+        The privacy runtime shared by all three DynShift sites. Synchronous
+        and before any Google script, so Consent Mode defaults exist first:
+        analytics denied everywhere until the reader allows it, advertising
+        denied in the EEA, the UK and Switzerland until Google's message
+        answers, personalisation denied under Global Privacy Control. It also
+        loads analytics after consent, lazy-loads ad slots, and opens
+        "Privacy settings".
+      */
+    }
+    <script is:inline src="/privacy.js" data-ga={GA_ID} data-policy="/privacy/" data-cookies="/cookies/"></script>
+    {
+      /*
         The AdSense loader. Not gated: this script is what delivers Google's
-        consent message to visitors in the EEA, the UK and Switzerland, and
-        that message is a Google-certified consent platform where the banner
-        below is not. Gating it meant the crawler found no ad code at all and
-        the people the regulation protects were never asked. Analytics is a
-        different case and stays behind the banner.
+        consent message to visitors in the EEA, the UK and Switzerland (a
+        certified consent platform) and the US state opt-out. Gating it meant
+        the crawler found no ad code at all and the people the regulation
+        protects were never asked. Auto ads are off in the AdSense account;
+        ads appear only in placed slots.
       */
     }
     {
@@ -123,35 +135,6 @@ const schema = {
     <meta name="twitter:image" content={ogImage} />
 
     <script type="application/ld+json" set:html={JSON.stringify(schema)} />
-
-    {
-      /*
-        Analytics loads only when its id is configured, and only after
-        consent. An unconfigured build ships no analytics script at all
-        rather than a placeholder that half-works.
-      */
-    }
-    {
-      GA_ID && (
-        <script
-          is:inline
-          define:vars={{ GA_ID }}
-          set:html={`
-        (function () {
-          if (localStorage.getItem('pp-consent') !== 'yes') return;
-          var s = document.createElement('script');
-          s.async = true;
-          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
-          document.head.appendChild(s);
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', GA_ID, { anonymize_ip: true });
-        })();
-      `}
-        />
-      )
-    }
   </head>
 
   <body>
@@ -233,19 +216,23 @@ const schema = {
             <h4>Legal</h4>
             <ul>
               <li><a href="/privacy/">Privacy</a></li>
-              <li><a href="/terms/">Terms</a></li>
               <li><a href="/cookies/">Cookies</a></li>
+              <li><a href="/terms/">Terms</a></li>
+              <li><a href="/contact/">Contact &amp; grievances</a></li>
               <li>
                 <a href={`${REPO}/blob/main/TRADEMARK.md`} rel="noopener">Trademark</a>
               </li>
               {/*
-                Reopens Google's consent message for advertising. Hidden
-                unless that message applies to the reader, which is Google's
-                own pattern: a control for a question nobody was asked is
-                noise.
+                The same legal controls as every DynShift site. "Privacy
+                settings" is always there and opens the shared panel; the Do
+                Not Sell or Share link appears only where Google reports that
+                a US state regulation applies to the reader.
               */}
-              <li id="pp-privacy-settings-item" hidden>
-                <button type="button" id="pp-privacy-settings">Privacy settings</button>
+              <li>
+                <button type="button" class="linklike" data-privacy-settings>Privacy settings</button>
+              </li>
+              <li class="dns">
+                <a href="/privacy/#your-choices" data-dns-link>Do Not Sell or Share My Personal Information</a>
               </li>
             </ul>
           </div>
@@ -264,62 +251,5 @@ const schema = {
       </div>
     </footer>
 
-    {
-      GA_ID && (
-        <div
-          id="pp-consent"
-          hidden
-          style="position:fixed;inset:auto 16px 16px;max-width:520px;margin-inline:auto;background:var(--raised);border:1px solid var(--line);border-radius:var(--r-m);box-shadow:var(--shadow);padding:18px;z-index:50;font-size:.92rem"
-        >
-          <p style="margin:0 0 12px;color:var(--ink2)">
-            This site would like to count visits, using Google Analytics. The
-            app itself collects nothing, and declining changes nothing about
-            how the site works. See the{" "}
-            <a href="/privacy/">privacy policy</a>.
-          </p>
-          <div style="display:flex;gap:10px">
-            <button class="btn btn-primary" data-consent="yes">Accept</button>
-            <button class="btn btn-ghost" data-consent="no">Decline</button>
-          </div>
-        </div>
-        <script is:inline>
-          (function () {
-            var box = document.getElementById("pp-consent");
-            if (!box) return;
-            if (!localStorage.getItem("pp-consent")) box.hidden = false;
-            box.addEventListener("click", function (e) {
-              var v = e.target && e.target.getAttribute("data-consent");
-              if (!v) return;
-              localStorage.setItem("pp-consent", v);
-              box.hidden = true;
-              if (v === "yes") location.reload();
-            });
-          })();
-        </script>
-      )
-    }
-    {
-      ADSENSE_CLIENT && (
-        <script is:inline>
-          {`
-        (function () {
-          var item = document.getElementById('pp-privacy-settings-item');
-          var button = document.getElementById('pp-privacy-settings');
-          if (!item || !button) return;
-          button.addEventListener('click', function () {
-            if (window.googlefc && window.googlefc.showRevocationMessage) {
-              window.googlefc.showRevocationMessage();
-            }
-          });
-          window.googlefc = window.googlefc || {};
-          window.googlefc.callbackQueue = window.googlefc.callbackQueue || [];
-          window.googlefc.callbackQueue.push({
-            CONSENT_API_READY: function () { item.hidden = false; }
-          });
-        })();
-      `}
-        </script>
-      )
-    }
   </body>
 </html>

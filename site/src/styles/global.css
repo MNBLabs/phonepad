@@ -81,6 +81,13 @@
     sans-serif;
 
   color-scheme: light;
+
+  /* The shared privacy runtime's banner and panel (public/privacy.js). */
+  --ds-bg: var(--raised);
+  --ds-ink: var(--ink);
+  --ds-muted: var(--ink2);
+  --ds-line: var(--line);
+  --ds-radius: var(--r-m);
 }
 
 *,
@@ -446,9 +453,15 @@ footer.site a {
 footer.site a:hover {
   color: var(--ink);
 }
-/* The one control in the footer that is a button, not a link: it reopens
-   Google's advertising consent message. It should read as the links beside
-   it, because to the reader it is one. */
+/* The one control in the footer that is a button, not a link: "Privacy
+   settings" opens the shared privacy panel. It should read as the links
+   beside it, because to the reader it is one. */
+footer.site .dns {
+  display: none;
+}
+html[data-us-privacy] footer.site .dns {
+  display: list-item;
+}
 footer.site button {
   font: inherit;
   color: var(--ink2);

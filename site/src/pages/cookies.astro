@@ -1,156 +1,108 @@
 ---
 import Base from "../layouts/Base.astro";
-import { GA_ID, ADSENSE_CLIENT } from "../consts";
-const tracking = Boolean(GA_ID || ADSENSE_CLIENT);
+import { GA_ID, ADSENSE_CLIENT, POLICY_DATE } from "../consts";
+const analytics = Boolean(GA_ID);
+const ads = Boolean(ADSENSE_CLIENT);
 ---
 
 <Base
   title="Cookies"
-  description="What this website stores in your browser, and how to refuse it. The PhonePad app itself uses no cookies at all."
+  description="Every cookie and browser storage key this website uses, who sets it, why, for how long, and whether it waits for your consent. The PhonePad app uses none."
 >
   <section>
     <div class="wrap prose">
       <h1 style="font-size:clamp(2rem,5vw,3rem)">Cookies</h1>
-      <p class="muted small">Last updated 11 September 2026.</p>
+      <p class="muted small">Last updated {POLICY_DATE}.</p>
 
       <p>
         The PhonePad <strong>app and companion use no cookies</strong> and no
         web technology at all. This page is only about the website.
       </p>
+      <p>
+        The site sets no cookies of its own. It keeps one entry in local storage
+        to remember your privacy choice.
+        {(analytics || ads) && " Every cookie below is set by Google, and only when the conditions in the last column are met."}
+        Change your answer at any time with <strong>Privacy settings</strong> in the footer.
+      </p>
 
-      {
-        tracking ? (
-          <>
-            <h2>What is set, and when</h2>
-            <p>
-              {GA_ID && (
-                <>
-                  A banner on your first visit asks whether analytics are
-                  acceptable, and no analytics script is loaded before you
-                  answer.{" "}
-                </>
-              )}
-              {ADSENSE_CLIENT && (
-                <>
-                  Advertising is asked about separately, by Google's own
-                  consent message, which readers in the EEA, the UK and
-                  Switzerland see before anything is used to personalise an
-                  advertisement. That message is a consent platform certified
-                  by Google, which a banner of ours is not.
-                </>
-              )}
-            </p>
-            <div class="table-scroll">
-              <table>
-                <thead>
-                  <tr>
-                    <th>What</th>
-                    <th>Purpose</th>
-                    <th>Set by</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>
-                      <code>pp-consent</code>
-                    </td>
-                    <td>
-                      Remembers your answer to the banner so you are not asked
-                      again. Local storage, not a cookie, and never sent to a
-                      server.
-                    </td>
-                    <td>This site</td>
-                  </tr>
-                  {GA_ID && (
-                    <tr>
-                      <td>
-                        <code>_ga</code>, <code>_ga_*</code>
-                      </td>
-                      <td>
-                        Counting visits and which pages get read. IP addresses
-                        are anonymised.
-                      </td>
-                      <td>Google Analytics</td>
-                    </tr>
-                  )}
-                  {ADSENSE_CLIENT && (
-                    <tr>
-                      <td>Advertising cookies</td>
-                      <td>
-                        Serving and measuring the ads on documentation and guide
-                        pages.
-                      </td>
-                      <td>Google AdSense</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th>Name</th><th>Set by</th><th>Purpose</th><th>Lasts</th><th>When</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>dynshift-consent</code> (local storage)</td>
+              <td>This site</td>
+              <td>Remembers your analytics choice. Never sent to a server.</td>
+              <td>Until cleared; asked again after 12 months</td>
+              <td>When you answer</td>
+            </tr>
+            {ads && (
+              <tr>
+                <td><code>FCCDCF</code>, <code>FCNEC</code></td>
+                <td>Google (consent message)</td>
+                <td>Store your answer to Google's consent message</td>
+                <td>Up to 13 months</td>
+                <td>EEA, UK and Switzerland, when you answer</td>
+              </tr>
+            )}
+            {ads && (
+              <tr>
+                <td><code>__gads</code>, <code>__gpi</code></td>
+                <td>Google AdSense</td>
+                <td>Serve ads, limit repeats, measure them</td>
+                <td>13 months</td>
+                <td>EEA, UK, Switzerland: only with consent. Elsewhere: when an ad is shown</td>
+              </tr>
+            )}
+            {ads && (
+              <tr>
+                <td><code>__eoi</code></td>
+                <td>Google AdSense</td>
+                <td>Security and fraud prevention for ads</td>
+                <td>6 months</td>
+                <td>As above</td>
+              </tr>
+            )}
+            {analytics && (
+              <tr>
+                <td><code>_ga</code>, <code>_ga_*</code></td>
+                <td>Google Analytics</td>
+                <td>Tell visits apart and keep a session together, to count visits</td>
+                <td>2 years</td>
+                <td>Only after you allow analytics; never under Global Privacy Control</td>
+              </tr>
+            )}
+            {ads && (
+              <tr>
+                <td>Google's own cookies, such as <code>IDE</code> and <code>NID</code></td>
+                <td>Google, on its own domains</td>
+                <td>Advertising, including personalisation where allowed</td>
+                <td>Up to 13 months</td>
+                <td>
+                  Governed by Google; see
+                  <a href="https://policies.google.com/technologies/cookies" rel="noopener nofollow">Google's cookie list</a>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
 
-            <h2>Refusing them</h2>
-            <p>
-              {GA_ID && (
-                <>
-                  Click <strong>Decline</strong> on the banner and nothing
-                  beyond <code>pp-consent</code> is stored: no analytics script
-                  is fetched. To change your mind later, clear this site's data
-                  in your browser and answer differently.{" "}
-                </>
-              )}
-              {ADSENSE_CLIENT && (
-                <>
-                  For advertising, answer Google's consent message where it is
-                  shown, and use <strong>Privacy settings</strong> in the
-                  footer to reopen it afterwards. You can also turn off
-                  personalised advertising for your Google account at{" "}
-                  <a href="https://myadcenter.google.com/" rel="noopener nofollow">
-                    My Ad Center
-                  </a>
-                  .
-                </>
-              )}
-            </p>
-            <p>
-              Every part of the site works the same either way. Blocking
-              third-party cookies or using a content blocker works too — the
-              site does not detect or complain about either.
-            </p>
-
-            <h2>Where they go</h2>
-            <p>
-              The analytics and advertising cookies are set by Google, which acts
-              as an independent controller for that data. See{" "}
-              <a
-                href="https://policies.google.com/technologies/partner-sites"
-                rel="noopener nofollow"
-              >
-                how Google uses data from partner sites
-              </a>
-              .
-            </p>
-          </>
-        ) : (
-          <>
-            <h2>Currently: none</h2>
-            <p>
-              This site sets <strong>no cookies</strong> and runs no analytics or
-              advertising. There is no banner, because there is nothing to ask
-              you about.
-            </p>
-            <p>
-              If that changes, this page and the
-              <a href="/privacy/">privacy policy</a> change with it, a banner
-              appears, and nothing loads until you accept it.
-            </p>
-          </>
-        )
-      }
+      <h2>Refusing them</h2>
+      <p>
+        Say no in Google's consent message or in this site's own question, turn
+        on Global Privacy Control in your browser, block third-party cookies, or
+        use a content blocker. Every part of the site works the same, and it
+        does not detect or complain about any of them. More in the
+        <a href="/privacy/#your-choices">privacy policy</a>.
+      </p>
 
       <h2>Hosting</h2>
       <p>
         The site is served from GitHub Pages. GitHub keeps its own server logs
-        for security and abuse prevention, as it does for everything it hosts;
-        that is outside our control and is covered by
+        for security and abuse prevention, covered by
         <a
           href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement"
           rel="noopener nofollow">GitHub's privacy statement</a

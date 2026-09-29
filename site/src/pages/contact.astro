@@ -1,0 +1,59 @@
+---
+import Base from "../layouts/Base.astro";
+import { CONTACT, CONTROLLER, ISSUES, DISCUSSIONS, POLICY_DATE } from "../consts";
+---
+
+<Base
+  title="Contact and grievances"
+  description="How to reach the people behind PhonePad, and how privacy requests and grievances are handled."
+>
+  <section>
+    <div class="wrap prose">
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">Contact and grievances</h1>
+      <p class="muted small">Last updated {POLICY_DATE}.</p>
+
+      <h2>Contact</h2>
+      <ul>
+        <li>A bug: <a href={ISSUES} rel="noopener">open an issue</a>.</li>
+        <li>A question or an idea: <a href={DISCUSSIONS} rel="noopener">start a discussion</a>.</li>
+        <li>Anything else, including privacy: <a href={`mailto:${CONTACT}`}>{CONTACT}</a>.</li>
+      </ul>
+
+      <h2>Grievance Officer</h2>
+      <p>
+        <strong>Grievance Officer, {CONTROLLER}</strong><br />
+        Email: <a href={`mailto:${CONTACT}?subject=Grievance`}>{CONTACT}</a><br />
+        Based in India.
+      </p>
+      <p>
+        Handles complaints and requests about personal data on all DynShift
+        sites: access, correction, erasure, withdrawal of consent, nomination,
+        and anything else about how your data is handled.
+      </p>
+
+      <h2>How a request is handled</h2>
+      <ol>
+        <li>
+          Write to the address above, saying what you want done. For analytics,
+          include your Google Analytics client identifier if you have it;
+          nothing else identifies you there.
+        </li>
+        <li>You get an acknowledgement, and a full answer within <strong>30 days</strong>.</li>
+        <li>
+          We may ask for just enough to confirm the request is yours, and will
+          never ask for a password or an identity document for this.
+        </li>
+        <li>
+          If you are not satisfied: in India, you may complain to the Data
+          Protection Board of India after this grievance process; in the EEA,
+          the UK or Switzerland, to your data protection authority.
+        </li>
+      </ol>
+      <p>
+        Requests about Google's advertising data are Google's to answer, through
+        <a href="https://myadcenter.google.com/" rel="noopener nofollow">My Ad Center</a>
+        and Google's own privacy tools.
+      </p>
+    </div>
+  </section>
+</Base>

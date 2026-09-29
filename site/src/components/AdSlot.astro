@@ -2,15 +2,19 @@
 /**
  * An advertising slot.
  *
- * Renders **nothing** when no publisher id is configured, which is the state
- * this ships in. There is no placeholder, no reserved grey box, and no
- * half-configured tag — an unconfigured build has no ads and no space where ads
- * would go.
+ * Renders **nothing** unless both the publisher id and the unit id are
+ * configured, and nothing on a legal page whatever the caller asks. When it
+ * renders, it takes no room and shows no label until Google has actually
+ * filled it: an unfilled or blocked slot stays collapsed. It is pushed only
+ * when it comes within about 600px of the viewport (public/privacy.js, the
+ * runtime shared by the DynShift sites), so it fills below the reader rather
+ * than under them, and carries restricted data processing when the browser
+ * sends Global Privacy Control.
  *
  * Where these may appear is a decision, not a default: documentation,
- * troubleshooting and the guides. Never on the download path, never between the
- * steps of an installation, never anywhere a reader might mistake one for part
- * of the page.
+ * troubleshooting and the guides, one per page. Never on the download path,
+ * never between the steps of an installation, never on a legal page, never
+ * anywhere a reader might mistake one for part of the page.
  */
 import { ADSENSE_CLIENT, ADSENSE_SLOT } from "../consts";
 
@@ -21,12 +25,13 @@ interface Props {
   label?: string;
 }
 const { slot = ADSENSE_SLOT, label = "Advertisement" } = Astro.props as Props;
-const show = Boolean(ADSENSE_CLIENT && slot);
+const legal = /^\/(privacy|cookies|terms|contact)(\/|$)/.test(Astro.url.pathname);
+const show = Boolean(ADSENSE_CLIENT && slot) && !legal;
 ---
 
 {
   show && (
-    <aside class="ad" aria-label={label}>
+    <aside class="ad" data-ad-slot-lazy aria-label={label}>
       <span class="ad-label">{label}</span>
       <ins
         class="adsbygoogle"
@@ -36,26 +41,33 @@ const show = Boolean(ADSENSE_CLIENT && slot);
         data-ad-format="auto"
         data-full-width-responsive="true"
       />
-      <script is:inline>
-        (adsbygoogle = window.adsbygoogle || []).push({});
-      </script>
     </aside>
   )
 }
 
 <style>
+  /* Nothing at all until Google fills the slot; the rule and the label come
+     with the advertisement. */
   .ad {
     display: block;
+  }
+  .ad-label {
+    display: none;
+  }
+  .ad:has(ins[data-ad-status="filled"]) {
     margin: 3rem 0;
     padding-top: 12px;
     border-top: 1px solid var(--line);
   }
-  .ad-label {
+  .ad:has(ins[data-ad-status="filled"]) .ad-label {
     display: block;
     font-size: 0.68rem;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ink3);
     margin-bottom: 10px;
+  }
+  .ad:has(ins[data-ad-status="unfilled"]) {
+    display: none;
   }
 </style>
