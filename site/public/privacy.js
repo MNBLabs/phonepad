@@ -25,6 +25,9 @@
     ga: (me && me.getAttribute("data-ga")) || "",
     policy: (me && me.getAttribute("data-policy")) || "/privacy/",
     cookies: (me && me.getAttribute("data-cookies")) || "/cookies/",
+    // Extra classes for the banner and panel, so a site whose theme is scoped to a root class
+    // (LAYR's `.l-root`) can theme them like the rest of its pages.
+    cls: (me && me.getAttribute("data-class")) || "",
   };
   var KEY = "dynshift-consent";
   var VERSION = 1;
@@ -178,28 +181,29 @@
   // Slots added later (single-page navigation) call this.
   w.dynshiftAds = { mount: mountAds };
 
-  // Our banner and panel. Allow and Reject are the same size, style and weight. Colours come from the
-  // site: --ds-bg, --ds-ink, --ds-muted, --ds-line, --ds-radius (each site maps its own tokens).
+  // Our banner and panel. Allow and Reject are the same size, style and weight. The look comes from
+  // the site: --ds-bg, --ds-ink, --ds-muted, --ds-line, --ds-radius, --ds-btn-radius, --ds-font
+  // (each site maps its own tokens; the fallbacks are a plain light theme in the system font).
   var styled = false;
   function css() {
     if (styled) return;
     styled = true;
     var s = d.createElement("style");
     s.textContent =
-      ".ds-consent,.ds-panel{background:var(--ds-bg,#fff);color:var(--ds-ink,#111);border:1px solid var(--ds-line,#ddd);border-radius:var(--ds-radius,12px);box-shadow:0 8px 32px rgba(0,0,0,.18);font:inherit;font-size:.92rem;line-height:1.5}" +
-      ".ds-consent{position:fixed;z-index:1000;left:16px;right:16px;bottom:16px;max-width:520px;margin-inline:auto;padding:16px 18px}" +
-      ".ds-consent p,.ds-panel p{margin:0 0 12px;color:var(--ds-muted,#444)}" +
-      ".ds-consent a,.ds-panel a{color:inherit;text-decoration:underline}" +
+      ".ds-consent,.ds-panel{background:var(--ds-bg,#fff);color:var(--ds-ink,#111);border:1px solid var(--ds-line,#ddd);border-radius:var(--ds-radius,12px);box-shadow:0 16px 40px -16px rgba(0,0,0,.45);font-family:var(--ds-font,system-ui,sans-serif);font-size:14px;line-height:1.55;text-align:left}" +
+      ".ds-consent{position:fixed;z-index:1000;left:16px;right:16px;bottom:16px;max-width:460px;margin-inline:auto;padding:16px}" +
+      ".ds-consent p,.ds-panel p{margin:0 0 12px;color:var(--ds-muted,#444);max-width:none}" +
+      ".ds-consent a,.ds-panel a{color:var(--ds-ink,#111);text-decoration:underline;text-underline-offset:.2em;text-decoration-thickness:1px}" +
       ".ds-row{display:flex;flex-wrap:wrap;gap:8px}" +
-      ".ds-btn{flex:1 1 0;min-width:120px;min-height:40px;padding:8px 14px;border-radius:calc(var(--ds-radius,12px) - 4px);border:1px solid var(--ds-ink,#111);background:transparent;color:var(--ds-ink,#111);font:inherit;font-weight:600;cursor:pointer}" +
-      ".ds-btn:hover{background:color-mix(in srgb,var(--ds-ink,#111) 8%,transparent)}" +
+      ".ds-btn{flex:1 1 0;min-width:110px;height:36px;padding:0 14px;border-radius:var(--ds-btn-radius,8px);border:1px solid var(--ds-line,#ccc);background:transparent;color:var(--ds-ink,#111);font:inherit;font-size:13.5px;font-weight:500;cursor:pointer}" +
+      ".ds-btn:hover{background:color-mix(in srgb,var(--ds-ink,#111) 7%,transparent)}" +
       ".ds-btn:focus-visible{outline:2px solid var(--ds-ink,#111);outline-offset:2px}" +
-      ".ds-privacy{position:fixed;inset:0;z-index:1001;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.45)}" +
-      ".ds-panel{width:100%;max-width:460px;max-height:calc(100vh - 32px);overflow:auto;padding:20px 22px}" +
-      ".ds-panel h2{margin:0 0 12px;font-size:1.15rem;color:var(--ds-ink,#111)}" +
-      ".ds-panel h3{margin:16px 0 6px;font-size:.95rem;color:var(--ds-ink,#111)}" +
-      ".ds-note{padding:10px 12px;border:1px solid var(--ds-line,#ddd);border-radius:8px}" +
-      ".ds-links{margin-top:16px!important}";
+      ".ds-privacy{position:fixed;inset:0;z-index:1001;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.5)}" +
+      ".ds-panel{width:100%;max-width:440px;max-height:calc(100vh - 32px);overflow:auto;padding:20px}" +
+      ".ds-panel h2{margin:0 0 14px;font:inherit;font-size:16px;font-weight:600;letter-spacing:-.01em;color:var(--ds-ink,#111)}" +
+      ".ds-panel h3{margin:18px 0 4px;font:inherit;font-size:13px;font-weight:600;color:var(--ds-ink,#111)}" +
+      ".ds-note{padding:10px 12px;border:1px solid var(--ds-line,#ddd);border-radius:var(--ds-btn-radius,8px)}" +
+      ".ds-links{margin:18px 0 12px!important;font-size:13px}";
     d.head.appendChild(s);
   }
   function el(tag, attrs, html) {
@@ -211,7 +215,7 @@
   function showBanner() {
     if (d.getElementById("ds-consent")) return;
     css();
-    var box = el("div", { id: "ds-consent", class: "ds-consent", role: "region", "aria-label": "Analytics choice" });
+    var box = el("div", { id: "ds-consent", class: ("ds-consent " + cfg.cls).trim(), role: "region", "aria-label": "Analytics choice" });
     box.innerHTML =
       '<p>May this site count visits with Google Analytics? It shows which pages help. Nothing is loaded unless you allow it, and the site works the same either way. <a href="' +
       cfg.policy +
@@ -259,7 +263,7 @@
     html +=
       '<p class="ds-links"><a href="' + cfg.policy + '">Privacy policy</a> · <a href="' + cfg.cookies +
       '">Cookies</a></p><div class="ds-row"><button type="button" class="ds-btn" data-close="1">Close</button></div></div>';
-    var wrap = el("div", { id: "ds-privacy", class: "ds-privacy" }, html);
+    var wrap = el("div", { id: "ds-privacy", class: ("ds-privacy " + cfg.cls).trim() }, html);
     wrap.addEventListener("click", function (e) {
       var t = e.target;
       if (t === wrap || (t.getAttribute && t.getAttribute("data-close"))) return wrap.remove();
@@ -289,8 +293,11 @@
       if (e.key === "Escape") wrap.remove();
     });
     d.body.appendChild(wrap);
-    var first = wrap.querySelector("button");
-    if (first) first.focus();
+    // Focus the dialog, not a choice: a ring on Allow would read as a pre-selected answer.
+    var panel = wrap.querySelector(".ds-panel");
+    panel.setAttribute("tabindex", "-1");
+    panel.style.outline = "none";
+    panel.focus();
   }
   function openUsOptOut() {
     var api = w.googlefc && w.googlefc.usstatesoptout;

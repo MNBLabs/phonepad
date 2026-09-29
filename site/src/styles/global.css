@@ -88,6 +88,8 @@
   --ds-muted: var(--ink2);
   --ds-line: var(--line);
   --ds-radius: var(--r-m);
+  --ds-btn-radius: var(--r-s);
+  --ds-font: var(--sans);
 }
 
 *,
