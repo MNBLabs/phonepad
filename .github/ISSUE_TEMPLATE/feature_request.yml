@@ -1,6 +1,6 @@
 name: Feature request
 description: Suggest something
-labels: [enhancement]
+labels: [enhancement, "needs triage"]
 body:
   - type: textarea
     id: goal

@@ -1,0 +1,25 @@
+title: "[Q] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Most setup questions are answered in **[Troubleshooting](https://phonepad.dynshift.com/troubleshooting/)**
+        and the **[Setup guide](https://phonepad.dynshift.com/setup/)**. If something is broken rather than
+        unclear, a **Bug report** issue is the better place.
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+      description: What you are trying to do, and where you got stuck.
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: App version, companion version, phone model and Windows version, if they matter.
+      placeholder: "App 1.0.0, Companion 1.0.0, Galaxy S24, Windows 11 24H2"
+  - type: textarea
+    id: tried
+    attributes:
+      label: What you have tried

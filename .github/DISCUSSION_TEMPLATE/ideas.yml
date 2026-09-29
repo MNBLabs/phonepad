@@ -1,0 +1,17 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Say what you are trying to do, not only what you want added. There is often a way already, and if
+        there is not, knowing the goal shapes the answer.
+  - type: textarea
+    id: goal
+    attributes:
+      label: What you are trying to do
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: How it could work. Layouts, sketches and links to similar tools are welcome.
