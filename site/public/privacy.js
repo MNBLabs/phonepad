@@ -1,5 +1,5 @@
 /*
- * DynShift privacy runtime, shared by dynshift.com, layr.dynshift.com and phonepad.dynshift.com.
+ * DynShift privacy runtime, shared by every DynShift site.
  * Each site ships an identical copy; change all three together.
  *
  * Load it synchronously in <head>, before the AdSense loader and before any Google tag:
@@ -26,7 +26,7 @@
     policy: (me && me.getAttribute("data-policy")) || "/privacy/",
     cookies: (me && me.getAttribute("data-cookies")) || "/cookies/",
     // Extra classes for the banner and panel, so a site whose theme is scoped to a root class
-    // (LAYR's `.l-root`) can theme them like the rest of its pages.
+    // (such as `.l-root`) can theme them like the rest of its pages.
     cls: (me && me.getAttribute("data-class")) || "",
   };
   var KEY = "dynshift-consent";
