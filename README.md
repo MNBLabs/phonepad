@@ -4,6 +4,10 @@
 
 # PhonePad
 
+![GitHub Release](https://img.shields.io/github/v/release/MNBLabs/phonepad)
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/MNBLabs/phonepad/total)
+![GitHub License](https://img.shields.io/github/license/MNBLabs/phonepad)
+
 **No controller? Use your phone.**
 
 Turns an Android phone into a wireless Xbox-compatible controller for Windows,
