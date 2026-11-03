@@ -225,6 +225,46 @@ class PhonePadConnection extends ChangeNotifier {
     return List.unmodifiable(discovered);
   }
 
+  /// Directly probe a specific IP via unicast DISCOVER_REQ.
+  ///
+  /// Useful for mobile hotspots and networks where UDP broadcasts are dropped
+  /// or isolated by the access point.
+  Future<DiscoveredPc?> probeAddress(
+    String ipStr, {
+    Duration timeout = const Duration(milliseconds: 1500),
+  }) async {
+    final cleaned = ipStr.trim();
+    final addr = InternetAddress.tryParse(cleaned);
+    if (addr == null || addr.type != InternetAddressType.IPv4) {
+      return null;
+    }
+
+    final sock = await _ensureSocket();
+    final probe = encodeDiscoverReq(
+      deviceId: _data.deviceIdBytes,
+      nonce: DateTime.now().millisecondsSinceEpoch & 0x7FFFFFFF,
+      name: _data.deviceName,
+    );
+
+    try {
+      sock.send(probe, addr, kDiscoveryPort);
+    } catch (e) {
+      debugPrint('PhonePad: unicast probe to $cleaned failed: $e');
+      return null;
+    }
+
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      for (final pc in discovered) {
+        if (pc.address.address == addr.address) {
+          return pc;
+        }
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    return null;
+  }
+
   void _handleDiscoverResp(Uint8List buf, InternetAddress from) {
     final DiscoverResp resp;
     try {

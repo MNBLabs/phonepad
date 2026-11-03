@@ -40,12 +40,13 @@ pub fn rule_state() -> RuleState {
     }
 }
 
-/// Adds an inbound allow rule for both ports. Requires elevation, so this
-/// triggers a UAC prompt; the user is told that up front by the button label.
+/// Adds an inbound allow rule for both ports across all profiles (private,
+/// domain, and public/mobile hotspot). Requires elevation, so this triggers
+/// a UAC prompt; the user is told that up front by the button label.
 pub fn add_rule(discovery_port: u16, input_port: u16) -> Result<(), String> {
     let args = format!(
         "advfirewall firewall add rule name=\"\"{RULE_NAME}\"\" dir=in action=allow \
-         protocol=UDP localport={discovery_port},{input_port} profile=private,domain"
+         protocol=UDP localport={discovery_port},{input_port} profile=any"
     );
 
     let script = format!(

@@ -461,6 +461,15 @@ impl App {
                             RichText::new(format!("Expires in {} s", left.as_secs())).color(DIM),
                         );
                     }
+                    let ips = local_ipv4s();
+                    if !ips.is_empty() {
+                        ui.add_space(4.0);
+                        ui.label(
+                            RichText::new(format!("PC IP: {}", ips.join(", ")))
+                                .color(DIM)
+                                .small(),
+                        );
+                    }
                 });
                 ui.add_space(6.0);
                 if ui.button("Cancel pairing").clicked() {
@@ -697,9 +706,10 @@ impl App {
 }
 
 /// Best-effort list of this machine's IPv4 addresses, shown so the user can
-/// sanity-check that the PC and the phone are on the same subnet.
+/// sanity-check that the PC and the phone are on the same subnet, or enter
+/// the address on the phone when hotspotting.
 fn local_ipv4s() -> Vec<String> {
-    use std::net::UdpSocket;
+    use std::net::{ToSocketAddrs, UdpSocket};
     // Connecting a UDP socket performs no traffic but makes the OS pick the
     // outbound interface, which is the address the phone will actually reach.
     let mut out = Vec::new();
@@ -710,5 +720,24 @@ fn local_ipv4s() -> Vec<String> {
             }
         }
     }
+
+    // Also resolve COMPUTERNAME to capture interfaces that might not be the
+    // default outbound internet route (e.g. Wi-Fi hotspot connection without internet).
+    if let Ok(host) = std::env::var("COMPUTERNAME") {
+        if let Ok(iter) = format!("{host}:0").to_socket_addrs() {
+            for addr in iter {
+                if let std::net::SocketAddr::V4(v4) = addr {
+                    let ip = v4.ip();
+                    if !ip.is_loopback() && !ip.is_unspecified() {
+                        let s = ip.to_string();
+                        if !out.contains(&s) {
+                            out.push(s);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     out
 }

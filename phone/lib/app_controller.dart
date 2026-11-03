@@ -174,6 +174,9 @@ class AppController extends ChangeNotifier {
     return connection.discover(extraTargets: extras);
   }
 
+  /// Probe a PC directly at [ip] via unicast discovery.
+  Future<DiscoveredPc?> probeAddress(String ip) => connection.probeAddress(ip);
+
   @override
   void dispose() {
     connection.removeListener(notifyListeners);

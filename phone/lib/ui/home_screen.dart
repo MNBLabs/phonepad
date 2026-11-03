@@ -62,6 +62,68 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() => _searching = false);
   }
 
+  Future<void> _manualConnect() async {
+    final field = TextEditingController();
+    final ip = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Connect by IP'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Enter your PC's IP address (shown in the companion window). "
+              'Use this when connected to a mobile hotspot or when network discovery is blocked.',
+              style: TextStyle(color: kInk2, fontSize: 14, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: field,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              decoration: const InputDecoration(
+                hintText: 'e.g. 192.168.43.15',
+                labelText: 'PC IP address',
+              ),
+              onSubmitted: (v) => Navigator.of(context).pop(v.trim()),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(field.text.trim()),
+            child: const Text('Connect'),
+          ),
+        ],
+      ),
+    );
+
+    if (ip == null || ip.isEmpty || !mounted) return;
+
+    setState(() {
+      _searching = true;
+      _notice = null;
+    });
+
+    final pc = await c.probeAddress(ip);
+    if (!mounted) return;
+    setState(() => _searching = false);
+
+    if (pc != null) {
+      await _onTapPc(pc);
+    } else {
+      setState(() {
+        _notice = 'No PhonePad companion answered at $ip. '
+            'Check the IP address and Windows Firewall.';
+      });
+    }
+  }
+
   Future<void> _onTapPc(DiscoveredPc pc) async {
     final known = c.data.pcById(pc.serverId) != null;
     if (!known) {
@@ -155,6 +217,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           IconButton(
+            tooltip: 'Connect by IP',
+            icon: const Icon(Icons.lan_outlined),
+            onPressed: _searching ? null : _manualConnect,
+          ),
+          IconButton(
             tooltip: 'Diagnostics',
             icon: const Icon(Icons.speed),
             onPressed: () => Navigator.of(context).push(
@@ -199,7 +266,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_searching && discovered.isEmpty)
                     const _Searching()
                   else if (discovered.isEmpty)
-                    _NothingFound(onRetry: _search)
+                    _NothingFound(
+                      onRetry: _search,
+                      onManualConnect: _manualConnect,
+                    )
                   else ...[
                     for (final pc in discovered) ...[
                       _PcTile(
@@ -209,14 +279,23 @@ class _HomeScreenState extends State<HomeScreen> {
                       ),
                       const SizedBox(height: 10),
                     ],
-                    Align(
-                      alignment: Alignment.center,
-                      child: TextButton.icon(
-                        onPressed: _searching ? null : _search,
-                        icon: const Icon(Icons.refresh, size: 17),
-                        style: TextButton.styleFrom(foregroundColor: kInk2),
-                        label: Text(_searching ? 'Searching' : 'Search again'),
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        TextButton.icon(
+                          onPressed: _searching ? null : _search,
+                          icon: const Icon(Icons.refresh, size: 17),
+                          style: TextButton.styleFrom(foregroundColor: kInk2),
+                          label: Text(_searching ? 'Searching' : 'Search again'),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton.icon(
+                          onPressed: _searching ? null : _manualConnect,
+                          icon: const Icon(Icons.lan_outlined, size: 17),
+                          style: TextButton.styleFrom(foregroundColor: kInk2),
+                          label: const Text('Connect by IP'),
+                        ),
+                      ],
                     ),
                   ],
                   const SizedBox(height: 28),
@@ -324,9 +403,13 @@ class _Searching extends StatelessWidget {
 /// things that are actually ever wrong, in the order they are worth checking.
 /// A spinner that quietly stops tells the user nothing they can act on.
 class _NothingFound extends StatelessWidget {
-  const _NothingFound({required this.onRetry});
+  const _NothingFound({
+    required this.onRetry,
+    required this.onManualConnect,
+  });
 
   final VoidCallback onRetry;
+  final VoidCallback onManualConnect;
 
   @override
   Widget build(BuildContext context) {
@@ -338,18 +421,25 @@ class _NothingFound extends StatelessWidget {
         const SizedBox(height: 16),
         const _Check('Is the PhonePad companion running on your PC?'),
         const Hairline(),
-        const _Check('Are both devices on the same Wi-Fi network?'),
+        const _Check('Are both devices on the same Wi-Fi or mobile hotspot?'),
         const Hairline(),
         const _Check(
-          'Did Windows Firewall ask to allow it? It needs private networks.',
+          'Did Windows Firewall allow PhonePad? Hotspots require Public network access.',
         ),
         const SizedBox(height: 22),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: FilledButton(
-            onPressed: onRetry,
-            child: const Text('Search again'),
-          ),
+        Wrap(
+          spacing: 12,
+          runSpacing: 8,
+          children: [
+            FilledButton(
+              onPressed: onRetry,
+              child: const Text('Search again'),
+            ),
+            OutlinedButton(
+              onPressed: onManualConnect,
+              child: const Text('Connect by IP'),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
       ],
