@@ -7,14 +7,14 @@ const ads = Boolean(ADSENSE_CLIENT);
 
 <Base
   title="Privacy"
-  description="What PhonePad collects: nothing. What this website collects, why, for how long, and your choices and rights, including under India's DPDP Act."
+  description="What PhonePad's apps send and to whom, what this website collects, why, for how long, and your choices and rights, including under India's DPDP Act."
 >
   <section>
     <div class="wrap prose">
       <h1 style="font-size:clamp(2rem,5vw,3rem)">Privacy</h1>
       <p class="muted small">Last updated {POLICY_DATE}.</p>
 
-      <h2>The app and the companion collect nothing</h2>
+      <h2>The apps</h2>
       <p>
         This is worth stating first because it is the part that matters.
         PhonePad has <strong>no account system, no server, and no telemetry</strong>.
@@ -22,10 +22,58 @@ const ads = Boolean(ADSENSE_CLIENT);
         in either the phone app or the Windows companion.
       </p>
       <p>
-        The phone talks to your PC directly over your own network. It does not
-        contact us, because no service exists behind PhonePad. You can verify
-        this: the <a href={REPO} rel="noopener">entire source code is public</a>,
-        and the companion never opens an outbound connection.
+        <strong>The controller never leaves your network.</strong> The phone
+        talks to your PC directly, over your Wi-Fi or the phone's own hotspot or
+        USB tethering. Your input, your layouts and your pairing keys are never
+        sent anywhere else. You can verify this: the
+        <a href={REPO} rel="noopener">entire source code is public</a>.
+      </p>
+      <p>
+        Two things do reach the internet, and they are what pay for PhonePad.
+      </p>
+
+      <h3>The ad in the Android app</h3>
+      <p>
+        The official Android app shows one banner ad, supplied by
+        <strong>Google AdMob</strong>, in a strip at the bottom of its home,
+        layouts and settings screens. Never on the controller. To serve,
+        measure and protect that ad, and to personalise it where you have
+        allowed it, Google's Mobile Ads SDK collects device and app information,
+        your IP address and approximate location derived from it, ad interactions,
+        and identifiers such as the Android advertising ID, under Google's own
+        policy:
+        <a href="https://policies.google.com/technologies/partner-sites" rel="noopener nofollow"
+          >how Google uses information from sites or apps that use its services</a
+        >. Google acts as an independent controller.
+      </p>
+      <ul>
+        <li>
+          <strong>EEA, UK and Switzerland</strong>: Google's consent message
+          asks before any personalisation, and <em>Settings → Ads → Ad privacy
+          choices</em> in the app changes your answer at any time.
+        </li>
+        <li>
+          <strong>Anywhere</strong>: reset or delete your advertising ID in
+          Android's settings (<em>Privacy → Ads</em> on most phones), and
+          manage personalisation at
+          <a href="https://myadcenter.google.com/" rel="noopener nofollow">My Ad Center</a>.
+        </li>
+        <li>
+          Builds of PhonePad made from the source code, rather than downloaded
+          from the release page, carry no ad unit and never start the ad SDK.
+        </li>
+      </ul>
+
+      <h3>The sponsor strip in the Windows companion</h3>
+      <p>
+        At most twice a day the companion downloads a small file,
+        <code>https://phonepad.dynshift.com/sponsor.json</code>, which says what
+        its sponsor strip shows. The request carries no identifier, no cookie
+        and nothing about you or your PC beyond what any download does: your IP
+        address and the program's name and version reach GitHub Pages, which
+        hosts the file (see <em>This website</em> below). Nothing is reported
+        back: not what was shown, not whether you clicked. Clicking only opens
+        the link in your browser.
       </p>
 
       <h3>What is stored, and where</h3>
@@ -184,8 +232,8 @@ const ads = Boolean(ADSENSE_CLIENT);
 
       <h2>Who else receives data</h2>
       <p>
-        Google{analytics || ads ? " (analytics and advertising)" : ""} and GitHub
-        (hosting, downloads, issues). Both process data in the United States and
+        Google (advertising in the Android app{analytics || ads ? ", and analytics and advertising on this site" : ""})
+        and GitHub (hosting, downloads, issues, and the companion's sponsor file). Both process data in the United States and
         elsewhere under their own safeguards for international transfers,
         including the EU Standard Contractual Clauses and the EU-US Data Privacy
         Framework. Nobody else.
@@ -196,8 +244,9 @@ const ads = Boolean(ADSENSE_CLIENT);
         Wherever you are, you can ask what DynShift holds about you and have it
         corrected or deleted: write to <a href={`mailto:${CONTACT}`}>{CONTACT}</a>,
         and you will have an answer within 30 days. In practice there is very
-        little: the app holds nothing of yours on our side, and this site holds
-        only what is described above.
+        little: the apps hold nothing of yours on our side (Google holds what its
+        ad SDK collected, and answers for it), and this site holds only what is
+        described above.
       </p>
       <h3>India (DPDP Act 2023)</h3>
       <p>
@@ -225,8 +274,9 @@ const ads = Boolean(ADSENSE_CLIENT);
 
       <h2>Children</h2>
       <p>
-        PhonePad is not directed at children, and neither the app nor this site
-        knowingly collects data from anyone under 18.
+        PhonePad is not directed at children, and neither the apps nor this
+        site knowingly collect data from anyone under 18. The ads in the app are
+        not requested as child-directed.
       </p>
 
       <h2>Changes</h2>

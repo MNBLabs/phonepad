@@ -14,7 +14,9 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 use std::time::{Duration, Instant};
 
-use pp_protocol::crypto::{ct_eq32, generate_pairing_code, random_bytes, PairingKeys};
+use pp_protocol::crypto::{
+    client_commitment, ct_eq32, generate_pairing_code, random_bytes, server_commitment, PairingKeys,
+};
 use pp_protocol::*;
 
 use crate::backend::{self, BackendKind, VirtualPad};
@@ -32,6 +34,20 @@ pub const DROP_AFTER: Duration = Duration::from_secs(2);
 pub const FEEDBACK_EVERY: Duration = Duration::from_millis(50);
 /// Pairing codes stop being accepted after this long.
 pub const PAIRING_WINDOW: Duration = Duration::from_secs(120);
+/// How many times one pairing session may reveal its proof of a code.
+///
+/// Each reveal is one guess for whoever is on the other end, and each one
+/// consumes the code, so a peer that does not know the code succeeds with
+/// probability at most `MAX_PAIRING_ATTEMPTS / 1_000_000`. Someone who mistypes
+/// gets a fresh code and a few more tries; after that the user has to click
+/// "Pair a phone" again, which nothing on the network can do for them.
+pub const MAX_PAIRING_ATTEMPTS: u32 = 5;
+/// Attempts in flight at once. Each costs a key agreement and a little memory,
+/// and the device id that keys them is chosen by whoever sends the request.
+const MAX_PENDING_PAIRS: usize = 8;
+/// How long after our reveal the phone has to open its commitment. The phone
+/// does it straight away; this only bounds how long an abandoned attempt lingers.
+const CONFIRM_WAIT: Duration = Duration::from_secs(5);
 
 const INPUT_READ_TIMEOUT: Duration = Duration::from_millis(15);
 const DISCOVERY_READ_TIMEOUT: Duration = Duration::from_millis(200);
@@ -49,6 +65,8 @@ pub struct Status {
     pub active_device_name: Option<String>,
     pub active_device_addr: Option<String>,
     pub discovery_bound: Option<String>,
+    /// Who sent the most recent discovery probe, and from where.
+    pub last_discovery: Option<String>,
     pub input_bound: Option<String>,
     pub bind_error: Option<String>,
 }
@@ -56,15 +74,26 @@ pub struct Status {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PairOutcome {
     Paired(String),
+    /// The phone's proof did not match: a mistyped code, or a guess.
     Refused(String),
+    /// A phone running PhonePad 1.0, whose pairing scheme is no longer accepted.
+    Outdated(String),
+    /// [`MAX_PAIRING_ATTEMPTS`] used up; pairing mode was closed.
+    TooManyAttempts,
 }
 
+/// One pairing attempt, from PAIR_REQ to PAIR_CONFIRM.
 struct PendingPair {
-    keys: PairingKeys,
-    client_pub: [u8; 32],
     token: Token,
     name: String,
+    server_confirm: [u8; 32],
+    server_nonce: [u8; 16],
     expected_client_confirm: [u8; 32],
+    /// Which code this attempt's proofs were computed from. Only attempts made
+    /// against the code currently on screen may commit.
+    epoch: u32,
+    /// Set by PAIR_COMMIT. From then on this attempt has consumed its code.
+    client_commit: Option<[u8; 32]>,
     expires: Instant,
 }
 
@@ -74,6 +103,9 @@ pub struct PairingState {
     pub code: String,
     pub expires_at: Option<Instant>,
     pub last_outcome: Option<PairOutcome>,
+    /// Reveals made in this pairing session. See [`MAX_PAIRING_ATTEMPTS`].
+    pub attempts: u32,
+    epoch: u32,
     pending: HashMap<DeviceId, PendingPair>,
 }
 
@@ -81,6 +113,8 @@ impl PairingState {
     pub fn begin(&mut self) {
         self.active = true;
         self.code = generate_pairing_code();
+        self.epoch = self.epoch.wrapping_add(1);
+        self.attempts = 0;
         self.expires_at = Some(Instant::now() + PAIRING_WINDOW);
         self.last_outcome = None;
         self.pending.clear();
@@ -93,12 +127,42 @@ impl PairingState {
         self.pending.clear();
     }
 
+    /// Retire the code on screen and show a new one.
+    ///
+    /// Called the moment a proof of the code is revealed to anyone. The peer
+    /// that received it can now test guesses offline, so the code it proves
+    /// must never be accepted again, whether this attempt succeeds or not.
+    fn rotate_code(&mut self) {
+        self.code = generate_pairing_code();
+        self.epoch = self.epoch.wrapping_add(1);
+    }
+
     /// Pairing mode expiring is normal, not an error.
     fn expire_if_due(&mut self, now: Instant) {
         if self.active && self.expires_at.is_some_and(|t| now >= t) {
             self.end();
         }
-        self.pending.retain(|_, p| now < p.expires);
+
+        // A phone that finds our proof wrong stops without revealing its own,
+        // which is correct (we might be an impostor) but means we never hear
+        // about it. An attempt that saw our reveal and then went quiet is a
+        // wrong code, and the PC window should say so.
+        let mut abandoned = None;
+        self.pending.retain(|_, p| {
+            let keep = now < p.expires;
+            if !keep && p.client_commit.is_some() {
+                abandoned = Some(p.name.clone());
+            }
+            keep
+        });
+        if let Some(name) = abandoned {
+            if self.active && self.attempts >= MAX_PAIRING_ATTEMPTS {
+                self.end();
+                self.last_outcome = Some(PairOutcome::TooManyAttempts);
+            } else {
+                self.last_outcome = Some(PairOutcome::Refused(name));
+            }
+        }
     }
 
     pub fn remaining(&self) -> Option<Duration> {
@@ -924,6 +988,7 @@ fn discovery_thread(shared: Arc<Shared>, port: u16) {
                 on_discover(&shared, &sock, &buf[..n], from, &hostname)
             }
             Some(msg::PAIR_REQ) => on_pair_req(&shared, &sock, &buf[..n], from),
+            Some(msg::PAIR_COMMIT) => on_pair_commit(&shared, &sock, &buf[..n], from),
             Some(msg::PAIR_CONFIRM) => on_pair_confirm(&shared, &sock, &buf[..n], from),
             _ => {
                 shared.stats.counters.rejected_malformed.fetch_add(1, REL);
@@ -965,6 +1030,8 @@ fn on_discover(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAddr, 
     };
     let pairing_mode = shared.pairing.lock().map(|p| p.active).unwrap_or(false);
     let backend = shared.status_snapshot().backend_label;
+    shared.stats.counters.discovery_requests.fetch_add(1, REL);
+    shared.set_status(|st| st.last_discovery = Some(format!("{} from {}", req.name, from.ip())));
 
     let resp = DiscoverResp {
         nonce: req.nonce,
@@ -987,22 +1054,55 @@ fn on_pair_req(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAddr) 
         return;
     };
 
+    let refuse = |status: PairStatus| {
+        let _ = sock.send_to(
+            &encode_pair_resp(&PairResp {
+                status,
+                server_pub: [0u8; 32],
+                server_commit: [0u8; 32],
+                commit_scheme: true,
+            }),
+            from,
+        );
+    };
+
     let Ok(mut pairing) = shared.pairing.lock() else {
         return;
     };
 
     if !pairing.active {
-        let _ = sock.send_to(
-            &encode_pair_resp(&PairResp {
-                status: PairStatus::NotInPairingMode,
-                server_pub: [0u8; 32],
-                server_confirm: [0u8; 32],
-            }),
-            from,
-        );
+        drop(pairing);
+        refuse(PairStatus::NotInPairingMode);
         shared.log(
             Level::Warn,
             format!("{} tried to pair but pairing mode is off", req.name),
+        );
+        return;
+    }
+
+    // PhonePad 1.0 speaks pairing v1, which gives away the code. Refuse it by
+    // name so the user knows to update the phone, rather than leaving a silent
+    // failure; never fall back to it.
+    if !req.commit_scheme {
+        pairing.last_outcome = Some(PairOutcome::Outdated(req.name.clone()));
+        drop(pairing);
+        refuse(PairStatus::Rejected);
+        shared.log(
+            Level::Warn,
+            format!(
+                "{} has PhonePad 1.0, which pairs insecurely; update the app on the phone",
+                req.name
+            ),
+        );
+        return;
+    }
+
+    if pairing.pending.len() >= MAX_PENDING_PAIRS && !pairing.pending.contains_key(&req.device_id) {
+        drop(pairing);
+        refuse(PairStatus::Rejected);
+        shared.log(
+            Level::Warn,
+            format!("too many pairing attempts at once; refused {}", req.name),
         );
         return;
     }
@@ -1012,22 +1112,27 @@ fn on_pair_req(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAddr) 
     let server_confirm = secrets.server_confirm(&req.client_pub, &keys.public, &pairing.code);
     let expected_client_confirm =
         secrets.client_confirm(&req.client_pub, &keys.public, &pairing.code);
+    let server_nonce = random_bytes::<16>();
 
     let resp = PairResp {
         status: PairStatus::Ok,
         server_pub: keys.public,
-        server_confirm,
+        server_commit: server_commitment(&server_confirm, &server_nonce),
+        commit_scheme: true,
     };
 
+    let epoch = pairing.epoch;
     pairing.pending.insert(
         req.device_id,
         PendingPair {
-            client_pub: req.client_pub,
             token: secrets.token,
             name: req.name.clone(),
+            server_confirm,
+            server_nonce,
             expected_client_confirm,
+            epoch,
+            client_commit: None,
             expires: Instant::now() + PAIRING_WINDOW,
-            keys,
         },
     );
     drop(pairing);
@@ -1039,6 +1144,86 @@ fn on_pair_req(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAddr) 
     shared.log(Level::Info, format!("pairing started with {}", req.name));
 }
 
+/// The phone has committed to its proof. Reveal ours, and retire the code.
+fn on_pair_commit(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAddr) {
+    let Ok(commit) = decode_pair_commit(buf) else {
+        shared.stats.counters.rejected_malformed.fetch_add(1, REL);
+        return;
+    };
+
+    let refuse = |status: PairStatus| {
+        let _ = sock.send_to(
+            &encode_pair_reveal(&PairReveal {
+                status,
+                server_confirm: [0u8; 32],
+                server_nonce: [0u8; 16],
+            }),
+            from,
+        );
+    };
+
+    let Ok(mut pairing) = shared.pairing.lock() else {
+        return;
+    };
+    if !pairing.active {
+        drop(pairing);
+        refuse(PairStatus::NotInPairingMode);
+        return;
+    }
+
+    let epoch = pairing.epoch;
+    let live = pairing
+        .pending
+        .get(&commit.device_id)
+        .is_some_and(|p| p.epoch == epoch && p.client_commit.is_none());
+    if !live {
+        // Unknown, already committed, or made against a code that has since
+        // been consumed by another attempt.
+        drop(pairing);
+        refuse(PairStatus::Rejected);
+        return;
+    }
+
+    // Counted here, at the reveal, not at a failed confirmation: a peer that
+    // commits, reads our proof and never confirms has still had its guess.
+    if pairing.attempts >= MAX_PAIRING_ATTEMPTS {
+        pairing.end();
+        pairing.last_outcome = Some(PairOutcome::TooManyAttempts);
+        drop(pairing);
+        refuse(PairStatus::NotInPairingMode);
+        shared.log(
+            Level::Warn,
+            format!(
+                "pairing stopped after {MAX_PAIRING_ATTEMPTS} attempts; click \
+                 \"Pair a phone\" to try again"
+            ),
+        );
+        return;
+    }
+
+    // Everything else in flight was computed from the code about to be
+    // revealed, so none of it may proceed.
+    pairing.pending.retain(|id, _| *id == commit.device_id);
+    pairing.attempts += 1;
+    pairing.rotate_code();
+
+    let Some(pending) = pairing.pending.get_mut(&commit.device_id) else {
+        return;
+    };
+    pending.client_commit = Some(commit.client_commit);
+    pending.expires = Instant::now() + CONFIRM_WAIT;
+    let reveal = PairReveal {
+        status: PairStatus::Ok,
+        server_confirm: pending.server_confirm,
+        server_nonce: pending.server_nonce,
+    };
+    drop(pairing);
+
+    if let Err(e) = sock.send_to(&encode_pair_reveal(&reveal), from) {
+        shared.log(Level::Warn, format!("could not answer pair commit: {e}"));
+    }
+}
+
 fn on_pair_confirm(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAddr) {
     let Ok(conf) = decode_pair_confirm(buf) else {
         shared.stats.counters.rejected_malformed.fetch_add(1, REL);
@@ -1048,21 +1233,52 @@ fn on_pair_confirm(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAd
     let Ok(mut pairing) = shared.pairing.lock() else {
         return;
     };
-    let Some(pending) = pairing.pending.remove(&conf.device_id) else {
+    let committed = pairing
+        .pending
+        .get(&conf.device_id)
+        .and_then(|p| p.client_commit);
+    let (Some(client_commit), true) = (committed, pairing.active) else {
+        drop(pairing);
         let _ = sock.send_to(&encode_pair_result(PairStatus::Rejected), from);
         return;
     };
+    let Some(pending) = pairing.pending.remove(&conf.device_id) else {
+        return;
+    };
 
-    if !ct_eq32(&pending.expected_client_confirm, &conf.client_confirm) {
-        // Wrong code typed. Keep pairing mode open so the user can retry, but
-        // discard this attempt.
-        pairing.last_outcome = Some(PairOutcome::Refused(pending.name.clone()));
+    // The opening must match what the phone committed to before it saw our
+    // proof, and the proof must be for the code that was on screen.
+    let opens = ct_eq32(
+        &client_commitment(&conf.client_confirm, &conf.client_nonce),
+        &client_commit,
+    );
+    let proves = ct_eq32(&pending.expected_client_confirm, &conf.client_confirm);
+
+    if !(opens && proves) {
+        // The code this attempt used is already retired, so the user simply
+        // reads the new one. After the last allowed attempt, stop listening.
+        let exhausted = pairing.attempts >= MAX_PAIRING_ATTEMPTS;
+        if exhausted {
+            pairing.end();
+            pairing.last_outcome = Some(PairOutcome::TooManyAttempts);
+        } else {
+            pairing.last_outcome = Some(PairOutcome::Refused(pending.name.clone()));
+        }
         drop(pairing);
         let _ = sock.send_to(&encode_pair_result(PairStatus::CodeMismatch), from);
         shared.log(
             Level::Warn,
             format!("{} entered the wrong pairing code", pending.name),
         );
+        if exhausted {
+            shared.log(
+                Level::Warn,
+                format!(
+                    "pairing stopped after {MAX_PAIRING_ATTEMPTS} wrong codes; click \
+                     \"Pair a phone\" to try again"
+                ),
+            );
+        }
         return;
     }
 
@@ -1077,8 +1293,4 @@ fn on_pair_confirm(shared: &Shared, sock: &UdpSocket, buf: &[u8], from: SocketAd
 
     let _ = sock.send_to(&encode_pair_result(PairStatus::Ok), from);
     shared.log(Level::Info, format!("paired with {}", pending.name));
-
-    // `keys` and `client_pub` have done their job; naming them here documents
-    // that they are intentionally dropped rather than forgotten.
-    let _ = (pending.keys, pending.client_pub);
 }

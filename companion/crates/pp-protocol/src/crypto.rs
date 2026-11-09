@@ -1,9 +1,17 @@
 //! Pairing and per-packet authentication.
 //!
 //! Threat model: any device on the same LAN. It must not be able to inject
-//! controller input, replay a captured stream, or man-in-the-middle pairing.
-//! It is *not* a defence against an attacker who can read the phone's or the
-//! PC's local storage — at that point they own the machine anyway.
+//! controller input, replay a captured stream, or pair itself with the PC
+//! without the code on the PC's screen. It is *not* a defence against an
+//! attacker who can read the phone's or the PC's local storage — at that point
+//! they own the machine anyway.
+//!
+//! The pairing code is six digits, so anything that lets a peer test a guess
+//! *offline* loses it in under a second. Pairing v1 did exactly that: the PC's
+//! reply carried an HMAC over the code, keyed by a secret the requester shares,
+//! so one request was enough to recover the code. v2 makes each side commit to
+//! its proof before the other reveals one (see [`commitment`]), which leaves a
+//! peer that does not know the code one online guess per attempt.
 
 use hkdf::Hkdf;
 use hmac::{Hmac, Mac};
@@ -156,6 +164,31 @@ impl PairingSecrets {
     }
 }
 
+/// Hash commitment to a confirmation tag: `SHA-256(label || tag || nonce)`.
+///
+/// Hiding because the 16-byte nonce is random and secret until the opening, so
+/// a commitment says nothing about the code; binding because SHA-256 is
+/// collision resistant, so a peer that committed before it knew the code cannot
+/// later open to a proof of the right one.
+pub fn commitment(label: &[u8], tag: &[u8; 32], nonce: &[u8; 16]) -> [u8; 32] {
+    use sha2::Digest;
+    let mut h = Sha256::new();
+    h.update(label);
+    h.update(tag);
+    h.update(nonce);
+    h.finalize().into()
+}
+
+/// The PC's commitment, sent in PAIR_RESP.
+pub fn server_commitment(server_confirm: &[u8; 32], nonce: &[u8; 16]) -> [u8; 32] {
+    commitment(b"pp-commit-srv", server_confirm, nonce)
+}
+
+/// The phone's commitment, sent in PAIR_COMMIT.
+pub fn client_commitment(client_confirm: &[u8; 32], nonce: &[u8; 16]) -> [u8; 32] {
+    commitment(b"pp-commit-cli", client_confirm, nonce)
+}
+
 /// Constant-time equality for 32-byte confirmation tags.
 pub fn ct_eq32(a: &[u8; 32], b: &[u8; 32]) -> bool {
     let mut diff = 0u8;
@@ -259,6 +292,19 @@ mod tests {
         assert!(!verify_mac8(&key, b"hello controlleR", &tag));
         assert!(!verify_mac8(&[4u8; 32], data, &tag));
         assert!(!verify_mac8(&key, data, &tag[..7]));
+    }
+
+    #[test]
+    fn commitments_bind_the_tag_the_nonce_and_the_side() {
+        let tag = [1u8; 32];
+        let nonce = [2u8; 16];
+        let c = server_commitment(&tag, &nonce);
+        assert!(ct_eq32(&c, &server_commitment(&tag, &nonce)));
+        assert!(!ct_eq32(&c, &server_commitment(&[3u8; 32], &nonce)));
+        assert!(!ct_eq32(&c, &server_commitment(&tag, &[4u8; 16])));
+        // Domain-separated, so the phone's commitment can never be reflected
+        // back as the PC's.
+        assert!(!ct_eq32(&c, &client_commitment(&tag, &nonce)));
     }
 
     #[test]

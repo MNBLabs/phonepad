@@ -35,16 +35,31 @@ import { REPO } from "../consts";
       <h2>Pairing and security</h2>
       <p>
         Pairing is an X25519 exchange authenticated by the six-digit code shown
-        on the PC. The long-term token it produces is never transmitted. Every
-        packet after that carries a truncated HMAC-SHA256 tag and passes through
-        a 64-slot replay window, so nothing else on your network can inject
-        controller input, and a captured burst cannot be replayed.
+        on the PC. Each side commits to its proof of the code before the other
+        reveals one, and the PC replaces the code after every attempt, so the
+        code cannot be guessed offline. The long-term token it produces is never
+        transmitted. Every packet after that carries a truncated HMAC-SHA256 tag
+        and passes through a 64-slot replay window, so nothing else on your
+        network can inject controller input, and a captured burst cannot be
+        replayed.
       </p>
       <p>
-        Nothing leaves your network. No account, no server, no telemetry. The
-        full threat model — including what it does <em>not</em> defend against —
+        The controller never leaves your network. No account, no server, no
+        telemetry. The full threat model — including what it does
+        <em>not</em> defend against, and the pairing weakness fixed in 1.1.0 —
         is in
         <a href={`${REPO}/blob/main/SECURITY.md`} rel="noopener">SECURITY.md</a>.
+      </p>
+
+      <h2>Networks</h2>
+      <p>
+        The phone searches every local network it is part of: its Wi-Fi, and
+        any hotspot or USB tethering it is providing. It leaves mobile data out,
+        so the search never goes to your carrier. The companion watches which
+        networks the PC is on and whether Windows Firewall would let a phone
+        reach it on each; where it would not, it says why and offers the
+        narrowest fix, which for your own hotspot is to mark that one network
+        private.
       </p>
 
       <h2>Failsafes</h2>

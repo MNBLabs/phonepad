@@ -13,7 +13,8 @@ import { DOWNLOAD_APK, DOWNLOAD_COMPANION, DOWNLOAD_SUMS, RELEASES, VIGEM } from
       <h1 style="font-size:clamp(2rem,5vw,3rem)">Getting PhonePad working</h1>
       <p class="lede">
         About five minutes, most of it a one-time driver install. You need a
-        Windows PC and an Android phone on the same Wi-Fi network.
+        Windows PC and an Android phone on the same Wi-Fi network, or the PC
+        connected to the phone's own hotspot or USB tethering.
       </p>
 
       <h2>1. Install the ViGEmBus driver</h2>
@@ -54,9 +55,9 @@ import { DOWNLOAD_APK, DOWNLOAD_COMPANION, DOWNLOAD_SUMS, RELEASES, VIGEM } from
         Windows will ask whether to allow it through the firewall. Say
         <strong>yes for private networks</strong> — PhonePad only ever talks to
         your own network, and blocking it means your phone can never find your
-        PC. If you clicked the wrong thing, there is an
-        <em>Add firewall rule</em> button under <em>Advanced</em> in the
-        companion window.
+        PC. Whatever you answered, if Windows is blocking PhonePad on a network
+        this PC is on, the companion shows it under
+        <em>Windows is blocking PhonePad</em> with the fix.
       </p>
       <p>
         You should now see <strong>Waiting for your phone</strong> and a
@@ -85,7 +86,33 @@ import { DOWNLOAD_APK, DOWNLOAD_COMPANION, DOWNLOAD_SUMS, RELEASES, VIGEM } from
       <p>
         That code is used once, to establish a key the two devices keep. From
         then on, opening the app and tapping your PC goes straight through — no
-        code, no IP addresses, nothing to remember.
+        code, no IP addresses, nothing to remember. If you mistype it, the PC
+        shows a new code: each one is good for a single attempt.
+      </p>
+      <p class="small muted">
+        Phone and PC both need PhonePad 1.1 or newer to pair. A phone that was
+        already paired with 1.0 keeps working.
+      </p>
+
+      <h2>No Wi-Fi router? Use the phone's hotspot</h2>
+      <p>
+        Turn on the phone's <strong>hotspot</strong> and connect the PC to it,
+        or plug the phone in and turn on <strong>USB tethering</strong>. Then
+        open PhonePad as usual; it looks on every network the phone is part of.
+      </p>
+      <p>
+        The first time, Windows will be blocking it: it files every network it
+        has not seen before as <em>public</em>. The companion shows that network
+        under <em>Windows is blocking PhonePad</em> with a
+        <strong>Make private</strong> button. That marks just that network as
+        one you trust, with one administrator prompt, and Windows remembers it
+        for a hotspot. With USB tethering, many phones look like a new network
+        each time tethering starts, so you may be asked again.
+      </p>
+      <p class="small muted">
+        Only do this for your own phone or your own network, never for café,
+        hotel or airport Wi-Fi. PhonePad itself never opens its ports on public
+        networks.
       </p>
 
       <h2>5. Check Windows agrees</h2>

@@ -8,9 +8,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod brand;
+mod elevate;
 mod firewall;
+mod netprofile;
+mod sponsor;
 
-use std::sync::Arc;
+use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use eframe::egui::{self, Color32, RichText};
@@ -21,12 +25,22 @@ use pp_core::store;
 
 use brand::{BAD, GOOD, INK, INK2 as DIM, WARN};
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 fn main() -> eframe::Result {
+    // The elevated copy started by "Trust this network" does that one thing
+    // and exits, before any window or socket exists.
+    let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) == Some(elevate::TRUST_NETWORK) {
+        std::process::exit(trust_network(args.get(2).map(String::as_str)));
+    }
+
+    let title = format!("PhonePad Companion {VERSION}");
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([880.0, 720.0])
-            .with_min_inner_size([620.0, 480.0])
-            .with_title("PhonePad Companion")
+            .with_inner_size([880.0, 760.0])
+            .with_min_inner_size([620.0, 520.0])
+            .with_title(&title)
             .with_icon(Arc::new(brand::icon())),
         ..Default::default()
     };
@@ -41,24 +55,86 @@ fn main() -> eframe::Result {
     )
 }
 
+/// Runs elevated. Marks one network private and makes sure PhonePad's
+/// private-network rule exists, because on a PC where PhonePad was only ever
+/// allowed on public networks, making the network private would otherwise
+/// trade one block for another. Exit codes: 0 done, 2 bad argument, 3 the
+/// category could not be changed, 4 the rule could not be added.
+fn trust_network(arg: Option<&str>) -> i32 {
+    let Some(id) = arg.and_then(netprofile::parse_guid) else {
+        return 2;
+    };
+    if netprofile::mark_trusted(id).is_err() {
+        return 3;
+    }
+    let (config, _) = store::load_from(&store::config_path());
+    match firewall::add_rule_elevated(config.discovery_port, config.input_port) {
+        Ok(()) => 0,
+        Err(_) => 4,
+    }
+}
+
+/// What a "Trust this network" click is doing, read by the window each frame.
+#[derive(Clone)]
+enum TrustJob {
+    Running(String),
+    Done(String),
+    Failed(String),
+}
+
 struct App {
     core: Option<Core>,
-    firewall: firewall::RuleState,
-    firewall_note: Option<(bool, String)>,
     show_rejects: bool,
     /// Set once the close button has been redirected to a minimise, so the
     /// reason can be shown rather than the window just refusing to close.
     minimised_note: bool,
+    /// Refreshed by a background thread every few seconds; see netprofile.rs.
+    networks: Arc<Mutex<netprofile::Report>>,
+    /// Ask that thread for a fresh report now, e.g. right after a change.
+    refresh_networks: Sender<()>,
+    trust: Arc<Mutex<Option<TrustJob>>>,
+    sponsor: sponsor::Strip,
 }
 
 impl App {
     fn new() -> Self {
+        let core = Core::start();
+        let (discovery, input) = core
+            .shared
+            .config
+            .lock()
+            .map(|c| (c.discovery_port, c.input_port))
+            .unwrap_or((pp_protocol::DISCOVERY_PORT, pp_protocol::INPUT_PORT));
+
+        let networks = Arc::new(Mutex::new(netprofile::Report::default()));
+        let (refresh_networks, wake) = mpsc::channel::<()>();
+        {
+            let networks = Arc::clone(&networks);
+            let exe = std::env::current_exe().unwrap_or_default();
+            // A network can be joined or reclassified at any moment, so this
+            // keeps looking; it is a reader on its own thread, like the window.
+            let _ = std::thread::Builder::new()
+                .name("pp-networks".into())
+                .spawn(move || loop {
+                    let report = netprofile::report(&exe, &[discovery, input]);
+                    if let Ok(mut n) = networks.lock() {
+                        *n = report;
+                    }
+                    match wake.recv_timeout(Duration::from_secs(4)) {
+                        Ok(()) | Err(mpsc::RecvTimeoutError::Timeout) => {}
+                        Err(mpsc::RecvTimeoutError::Disconnected) => return,
+                    }
+                });
+        }
+
         Self {
-            core: Some(Core::start()),
-            firewall: firewall::rule_state(),
-            firewall_note: None,
+            core: Some(core),
             show_rejects: false,
             minimised_note: false,
+            networks,
+            refresh_networks,
+            trust: Arc::new(Mutex::new(None)),
+            sponsor: sponsor::Strip::start(format!("PhonePad-Companion/{VERSION}")),
         }
     }
 
@@ -117,7 +193,8 @@ impl eframe::App for App {
             } else {
                 (
                     "Waiting for your phone",
-                    "Open PhonePad on your phone and tap this PC. Both need to be on the same Wi-Fi.",
+                    "Open PhonePad on your phone and tap this PC. Both need to be on the same \
+                     Wi-Fi, or this PC on the phone's hotspot or USB tethering.",
                     DIM,
                 )
             };
@@ -151,6 +228,11 @@ impl eframe::App for App {
             self.minimised_note = true;
         }
 
+        // The sponsor strip has its own panel, added before the central one,
+        // so the layout reserves its height and the content above scrolls
+        // instead of ever running underneath it.
+        self.sponsor_strip(ctx);
+
         let body = egui::Frame::new()
             .fill(brand::PAPER)
             .inner_margin(egui::Margin::symmetric(20, 12));
@@ -158,6 +240,9 @@ impl eframe::App for App {
             egui::ScrollArea::vertical().show(ui, |ui| {
                 self.pairing_section(ui, &shared);
                 ui.add_space(20.0);
+                if self.blocked_section(ui, &shared) {
+                    ui.add_space(20.0);
+                }
                 self.connection_section(ui, &status, &stats);
                 ui.add_space(20.0);
                 self.devices_section(ui, &shared);
@@ -168,7 +253,9 @@ impl eframe::App for App {
                 if self.minimised_note {
                     ui.label(
                         RichText::new(
-                            "PhonePad stays running while a phone is connected, so                              closing this window only hides it. Use Disconnect, then                              close, to stop it.",
+                            "PhonePad stays running while a phone is connected, so \
+                             closing this window only hides it. Use Disconnect, then \
+                             close, to stop it.",
                         )
                         .color(DIM)
                         .small(),
@@ -283,9 +370,11 @@ impl App {
             if ui
                 .checkbox(&mut auto, "Do this automatically when a cloud game starts")
                 .on_hover_text(
-                    "Watches for the Xbox app, GeForce NOW or a browser starting,                      and re-attaches once, three seconds later.
-
-                     Off by default because it is a guess based on which programs                      are running. It never fires while nothing is connected, and                      never twice for one launch.",
+                    "Watches for the Xbox app, GeForce NOW or a browser starting, \
+                     and re-attaches once, three seconds later.\n\n\
+                     Off by default because it is a guess based on which programs \
+                     are running. It never fires while nothing is connected, and \
+                     never twice for one launch.",
                 )
                 .changed()
             {
@@ -293,10 +382,9 @@ impl App {
                     c.auto_reattach = auto;
                     let snapshot = c.clone();
                     drop(c);
-                    if let Err(e) = pp_core::store::save_to(
-                        &self.core().shared.config_path,
-                        &snapshot,
-                    ) {
+                    if let Err(e) =
+                        pp_core::store::save_to(&self.core().shared.config_path, &snapshot)
+                    {
                         self.core()
                             .shared
                             .log(pp_core::log::Level::Warn, format!("could not save: {e}"));
@@ -335,7 +423,7 @@ impl App {
                             .unwrap_or_else(|| "none".into()),
                         DIM,
                     );
-                    kv(ui, "Transport", "Wi-Fi / UDP", DIM);
+                    kv(ui, "Transport", "UDP, local network", DIM);
                 });
 
             if stats.connected {
@@ -462,6 +550,28 @@ impl App {
                         );
                     }
                 });
+                // A code is used up by every attempt, right or wrong, so after
+                // a failure the one on screen is new. Say so.
+                match &pairing.last_outcome {
+                    Some(PairOutcome::Refused(name)) => {
+                        ui.add_space(4.0);
+                        ui.colored_label(
+                            WARN,
+                            format!("{name} entered the wrong code. Use the new one above."),
+                        );
+                    }
+                    Some(PairOutcome::Outdated(name)) => {
+                        ui.add_space(4.0);
+                        ui.colored_label(
+                            WARN,
+                            format!(
+                                "{name} has an older PhonePad that pairs insecurely. Update \
+                                 the app on the phone, then pair again."
+                            ),
+                        );
+                    }
+                    _ => {}
+                }
                 ui.add_space(6.0);
                 if ui.button("Cancel pairing").clicked() {
                     pairing.end();
@@ -476,6 +586,22 @@ impl App {
                     }
                     Some(PairOutcome::Refused(name)) => {
                         ui.colored_label(WARN, format!("{name} entered the wrong code."));
+                    }
+                    Some(PairOutcome::Outdated(name)) => {
+                        ui.colored_label(
+                            WARN,
+                            format!(
+                                "{name} has an older PhonePad that pairs insecurely. \
+                                 Update the app on the phone, then pair again."
+                            ),
+                        );
+                    }
+                    Some(PairOutcome::TooManyAttempts) => {
+                        ui.colored_label(
+                            WARN,
+                            "Pairing stopped after several wrong codes. If that wasn't \
+                             you, something else on this network tried to pair.",
+                        );
                     }
                     None => {
                         ui.label(
@@ -571,8 +697,39 @@ impl App {
                             BAD
                         },
                     );
-                    for ip in local_ipv4s() {
-                        kv(ui, "This PC", ip, DIM);
+                    kv(
+                        ui,
+                        "Phones searching",
+                        match &status.last_discovery {
+                            Some(last) => format!(
+                                "{} probes, last: {last}",
+                                shared.stats.snapshot().discovery_requests
+                            ),
+                            None => "none heard yet".into(),
+                        },
+                        DIM,
+                    );
+                    let report = self.networks.lock().map(|r| r.clone()).unwrap_or_default();
+                    for n in &report.networks {
+                        let ips: Vec<String> = n.addresses.iter().map(|a| a.to_string()).collect();
+                        let verdict = if n.block.is_some() { "blocked" } else { "open" };
+                        kv(
+                            ui,
+                            &n.name,
+                            format!(
+                                "{} · {} · PhonePad {verdict}",
+                                if ips.is_empty() {
+                                    "no IPv4".into()
+                                } else {
+                                    ips.join(", ")
+                                },
+                                n.category.label()
+                            ),
+                            if n.block.is_some() { WARN } else { DIM },
+                        );
+                    }
+                    if let Some(e) = &report.error {
+                        kv(ui, "Networks", e.clone(), WARN);
                     }
                 });
 
@@ -605,51 +762,6 @@ impl App {
             if let Some(err) = &status.bind_error {
                 ui.add_space(6.0);
                 ui.colored_label(BAD, err);
-            }
-
-            ui.add_space(8.0);
-            match &self.firewall {
-                firewall::RuleState::Present => {
-                    ui.colored_label(GOOD, "Windows Firewall rule is in place.");
-                }
-                firewall::RuleState::Missing => {
-                    ui.colored_label(
-                        WARN,
-                        "No firewall rule found. If the phone cannot see this PC, add one.",
-                    );
-                    ui.horizontal(|ui| {
-                        if ui.button("Add firewall rule (needs admin)").clicked() {
-                            let (d, i) = shared
-                                .config
-                                .lock()
-                                .map(|c| (c.discovery_port, c.input_port))
-                                .unwrap_or((pp_protocol::DISCOVERY_PORT, pp_protocol::INPUT_PORT));
-                            match firewall::add_rule(d, i) {
-                                Ok(()) => {
-                                    self.firewall = firewall::rule_state();
-                                    self.firewall_note =
-                                        Some((true, "Firewall rule added.".to_string()));
-                                    shared.log(Level::Info, "added the Windows Firewall rule");
-                                }
-                                Err(e) => {
-                                    self.firewall_note = Some((false, e.clone()));
-                                    shared
-                                        .log(Level::Warn, format!("firewall rule not added: {e}"));
-                                }
-                            }
-                        }
-                        if ui.button("Re-check").clicked() {
-                            self.firewall = firewall::rule_state();
-                        }
-                    });
-                }
-                firewall::RuleState::Unknown(e) => {
-                    ui.colored_label(WARN, format!("Could not check the firewall: {e}"));
-                }
-            }
-
-            if let Some((ok, note)) = &self.firewall_note {
-                ui.colored_label(if *ok { GOOD } else { BAD }, note);
             }
         });
     }
@@ -696,19 +808,252 @@ impl App {
     }
 }
 
-/// Best-effort list of this machine's IPv4 addresses, shown so the user can
-/// sanity-check that the PC and the phone are on the same subnet.
-fn local_ipv4s() -> Vec<String> {
-    use std::net::UdpSocket;
-    // Connecting a UDP socket performs no traffic but makes the OS pick the
-    // outbound interface, which is the address the phone will actually reach.
-    let mut out = Vec::new();
-    if let Ok(s) = UdpSocket::bind("0.0.0.0:0") {
-        if s.connect("8.8.8.8:80").is_ok() {
-            if let Ok(addr) = s.local_addr() {
-                out.push(addr.ip().to_string());
+impl App {
+    /// Shown only when Windows Firewall would stop a phone reaching PhonePad
+    /// on a network this PC is on. Returns whether anything was drawn.
+    fn blocked_section(&mut self, ui: &mut egui::Ui, shared: &pp_core::Shared) -> bool {
+        let report = self.networks.lock().map(|r| r.clone()).unwrap_or_default();
+        let trusting_works = report.private_would_work();
+        let blocked: Vec<netprofile::Network> = report
+            .networks
+            .into_iter()
+            .filter(|n| n.block.is_some())
+            .collect();
+        let job = self.trust.lock().ok().and_then(|j| j.clone());
+        if blocked.is_empty() && !matches!(job, Some(TrustJob::Done(_))) {
+            return false;
+        }
+        let busy = matches!(job, Some(TrustJob::Running(_)));
+
+        // Whatever blocks a public network (no rule at all, or the block rule
+        // Windows writes when only "Private" was ticked at its first-run
+        // prompt), the fix for the user's own hotspot is the same: make that
+        // one network private. Offered only when private networks are not
+        // themselves blocked by something adding a rule cannot get past.
+        let trustable = |n: &netprofile::Network| {
+            n.category == netprofile::Category::Public
+                && matches!(
+                    n.block,
+                    Some(netprofile::Block::NoAllowRule | netprofile::Block::ByRule)
+                )
+                && trusting_works
+        };
+
+        card(ui, "Windows is blocking PhonePad", |ui| {
+            if let Some(TrustJob::Done(msg)) = &job {
+                ui.colored_label(GOOD, msg);
+                if blocked.is_empty() {
+                    return;
+                }
+                ui.add_space(10.0);
             }
+
+            if blocked.iter().any(trustable) {
+                ui.label(
+                    RichText::new(
+                        "Windows treats a network it has not seen before as public, and \
+                         blocks phones from reaching PhonePad there. A phone's hotspot or \
+                         USB tethering always starts out that way. If one of these is your \
+                         own phone or your own network, make it private: Windows remembers \
+                         that for that network only.",
+                    )
+                    .color(INK),
+                );
+                ui.add_space(2.0);
+                ui.label(
+                    RichText::new("Don't do this for café, hotel, airport or other shared Wi-Fi.")
+                        .color(WARN),
+                );
+                ui.add_space(10.0);
+            }
+
+            brand::raised(ui, |ui| {
+                for (i, n) in blocked.iter().enumerate() {
+                    if i > 0 {
+                        ui.add_space(6.0);
+                        brand::hairline(ui);
+                        ui.add_space(6.0);
+                    }
+                    self.blocked_network(ui, shared, n, trustable(n), busy);
+                }
+            });
+
+            match &job {
+                Some(TrustJob::Running(name)) => {
+                    ui.add_space(8.0);
+                    ui.label(
+                        RichText::new(format!("Waiting for Windows to change \"{name}\"…"))
+                            .color(DIM),
+                    );
+                }
+                Some(TrustJob::Failed(msg)) => {
+                    ui.add_space(8.0);
+                    ui.colored_label(BAD, msg);
+                }
+                _ => {}
+            }
+        });
+        true
+    }
+
+    /// One row: the network, what it is, and the one action that fixes it.
+    fn blocked_network(
+        &self,
+        ui: &mut egui::Ui,
+        shared: &pp_core::Shared,
+        n: &netprofile::Network,
+        trustable: bool,
+        busy: bool,
+    ) {
+        let ips: Vec<String> = n.addresses.iter().map(|a| a.to_string()).collect();
+        let detail = if ips.is_empty() {
+            format!("{} network", n.category.label())
+        } else {
+            format!("{} network · {}", n.category.label(), ips.join(", "))
+        };
+
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                ui.label(RichText::new(&n.name).family(brand::semibold()).color(INK));
+                ui.label(RichText::new(detail).color(DIM).small());
+            });
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let action = if trustable {
+                    Some("Make private (needs admin)")
+                } else if n.block == Some(netprofile::Block::NoAllowRule) {
+                    Some("Allow PhonePad (needs admin)")
+                } else {
+                    None
+                };
+                if let Some(label) = action {
+                    if ui
+                        .add_enabled(!busy, egui::Button::new(label))
+                        .on_hover_text(if trustable {
+                            "Marks this one network private and allows PhonePad's two UDP \
+                             ports on private networks. Nothing changes for public networks."
+                        } else {
+                            "Allows PhonePad's two UDP ports on private networks only."
+                        })
+                        .clicked()
+                    {
+                        self.start_trust(shared, n);
+                    }
+                }
+            });
+        });
+
+        let why = match n.block {
+            // Seen on a Galaxy S24 Ultra: each USB tethering session arrives
+            // with a new random MAC, and Windows names wired networks by
+            // their gateway's MAC, so "Network 22" becomes "Network 23".
+            _ if trustable && n.usb_tether => Some(
+                "This is USB tethering. Many phones give it a new identity each time \
+                 tethering starts, so Windows may ask again next time. A Wi-Fi hotspot \
+                 is remembered.",
+            ),
+            _ if trustable => None,
+            Some(netprofile::Block::NoAllowRule) => {
+                Some("No Windows Firewall rule lets phones reach PhonePad on this network.")
+            }
+            Some(netprofile::Block::ByRule) => Some(
+                "A Windows Firewall rule blocks PhonePad here, usually from choosing Cancel \
+                 when Windows first asked about it. In Windows Security, open Firewall & \
+                 network protection, then Allow an app through firewall, and tick PhonePad \
+                 Companion for this kind of network.",
+            ),
+            Some(netprofile::Block::AllInbound) => Some(
+                "Windows Firewall blocks every incoming connection on this kind of network. \
+                 That setting is in Windows Security, under Firewall & network protection.",
+            ),
+            None => None,
+        };
+        if let Some(why) = why {
+            ui.add_space(4.0);
+            ui.label(RichText::new(why).color(DIM));
         }
     }
-    out
+
+    /// Run the elevated helper on a thread, so the window keeps drawing while
+    /// Windows shows its consent prompt.
+    fn start_trust(&self, shared: &pp_core::Shared, n: &netprofile::Network) {
+        let name = n.name.clone();
+        let args = format!(
+            "{} {}",
+            elevate::TRUST_NETWORK,
+            netprofile::format_guid(&n.id)
+        );
+        if let Ok(mut j) = self.trust.lock() {
+            *j = Some(TrustJob::Running(name.clone()));
+        }
+        shared.log(Level::Info, format!("asking Windows to trust \"{name}\""));
+        let trust = Arc::clone(&self.trust);
+        let refresh = self.refresh_networks.clone();
+        let _ = std::thread::Builder::new()
+            .name("pp-trust".into())
+            .spawn(move || {
+                let outcome = match elevate::run_self_elevated(&args) {
+                    Ok(0) => TrustJob::Done(format!(
+                        "\"{name}\" is now a private network and PhonePad is allowed on it."
+                    )),
+                    Ok(3) => TrustJob::Failed(format!(
+                        "Windows would not change \"{name}\". You can do it in Settings → \
+                         Network & internet → this network → Network profile type → Private."
+                    )),
+                    Ok(4) => TrustJob::Failed(
+                        "The network is private now, but the firewall rule could not be added."
+                            .into(),
+                    ),
+                    Ok(code) => {
+                        TrustJob::Failed(format!("The change did not finish (code {code})."))
+                    }
+                    Err(e) => TrustJob::Failed(e),
+                };
+                if let Ok(mut j) = trust.lock() {
+                    *j = Some(outcome);
+                }
+                let _ = refresh.send(());
+            });
+    }
+
+    /// One placement, in a strip of its own at the bottom of the window.
+    fn sponsor_strip(&self, ctx: &egui::Context) {
+        let p = self.sponsor.current();
+        let frame = egui::Frame::new()
+            .fill(brand::RAISED)
+            .stroke(egui::Stroke::new(1.0_f32, brand::LINE))
+            .inner_margin(egui::Margin::symmetric(20, 10));
+        egui::TopBottomPanel::bottom("sponsor")
+            .exact_height(58.0)
+            .resizable(false)
+            .show_separator_line(false)
+            .frame(frame)
+            .show(ctx, |ui| {
+                ui.horizontal_centered(|ui| {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if ui
+                            .button(RichText::new(&p.action).color(brand::ACCENT))
+                            .on_hover_text(&p.url)
+                            .clicked()
+                        {
+                            elevate::open_https(&p.url);
+                        }
+                        ui.add_space(12.0);
+                        ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                            ui.add(
+                                egui::Label::new(
+                                    RichText::new(format!("{} · {}", p.label, p.title))
+                                        .family(brand::semibold())
+                                        .color(INK),
+                                )
+                                .truncate(),
+                            );
+                            ui.add(
+                                egui::Label::new(RichText::new(&p.body).color(DIM).small())
+                                    .truncate(),
+                            );
+                        });
+                    });
+                });
+            });
+    }
 }

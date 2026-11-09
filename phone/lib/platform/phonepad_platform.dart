@@ -8,22 +8,80 @@ library;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-class LinkInfo {
-  final String? address;
-  final int prefixLength;
-  final String? broadcast;
-  final String interfaceName;
+/// What kind of link a [LocalNetwork] is, as far as the user is concerned.
+enum NetworkKind {
+  wifi('Wi-Fi'),
+  hotspot('Hotspot'),
+  usb('USB tethering'),
+  bluetooth('Bluetooth tethering'),
+  ethernet('Ethernet'),
+  other('Local network');
 
-  const LinkInfo({
-    this.address,
-    this.prefixLength = 0,
-    this.broadcast,
-    this.interfaceName = '',
+  const NetworkKind(this.label);
+  final String label;
+
+  static NetworkKind parse(String? v) =>
+      values.firstWhere((k) => k.name == v, orElse: () => NetworkKind.other);
+}
+
+/// One local IPv4 link a PC could be on: the phone's own Wi-Fi, or a network
+/// the phone is providing (hotspot, USB or Bluetooth tethering).
+class LocalNetwork {
+  final String interfaceName;
+  final String address;
+  final int prefixLength;
+  final String broadcast;
+  final NetworkKind kind;
+
+  const LocalNetwork({
+    required this.interfaceName,
+    required this.address,
+    required this.prefixLength,
+    required this.broadcast,
+    required this.kind,
   });
+
+  /// Whether [ip] is on this link, so a probe to it stays local.
+  bool contains(String ip) {
+    final a = _ipv4(address);
+    final b = _ipv4(ip);
+    if (a == null || b == null || prefixLength < 1 || prefixLength > 32) {
+      return false;
+    }
+    final mask = (0xFFFFFFFF << (32 - prefixLength)) & 0xFFFFFFFF;
+    return (a & mask) == (b & mask);
+  }
+
+  static int? _ipv4(String s) {
+    final parts = s.split('.');
+    if (parts.length != 4) return null;
+    var v = 0;
+    for (final p in parts) {
+      final n = int.tryParse(p);
+      if (n == null || n < 0 || n > 255) return null;
+      v = (v << 8) | n;
+    }
+    return v;
+  }
+}
+
+/// Every local link, plus what the phone's default network is. The default
+/// matters because 255.255.255.255 only ever leaves on the default network.
+class LinkInfo {
+  final List<LocalNetwork> networks;
+
+  /// `wifi`, `ethernet`, `cellular`, `vpn`, `other` or `none`.
+  final String defaultKind;
+
+  const LinkInfo({this.networks = const [], this.defaultKind = 'none'});
 
   static const empty = LinkInfo();
 
-  bool get isUsable => address != null;
+  bool get isUsable => networks.isNotEmpty;
+
+  /// Whether the all-ones broadcast reaches a local link rather than the
+  /// carrier's network.
+  bool get defaultIsLocal => defaultKind == 'wifi' || defaultKind == 'ethernet';
 }
 
 class DisplayInfo {
@@ -72,13 +130,27 @@ class PhonePadPlatform {
       await _call<String>('getDeviceName') ?? 'Android phone';
 
   static Future<LinkInfo> linkInfo() async {
-    final map = await _call<Map<Object?, Object?>>('getLinkInfo');
-    if (map == null || map.isEmpty) return LinkInfo.empty;
+    final map = await _call<Map<Object?, Object?>>('getLocalNetworks');
+    if (map == null) return LinkInfo.empty;
+    final networks = <LocalNetwork>[];
+    for (final raw in (map['networks'] as List<Object?>?) ?? const []) {
+      if (raw is! Map) continue;
+      final address = raw['address'] as String?;
+      final broadcast = raw['broadcast'] as String?;
+      if (address == null || broadcast == null) continue;
+      networks.add(LocalNetwork(
+        interfaceName: (raw['interface'] as String?) ?? '',
+        address: address,
+        prefixLength: (raw['prefixLength'] as int?) ?? 0,
+        broadcast: broadcast,
+        kind: NetworkKind.parse(raw['kind'] as String?),
+      ));
+    }
+    // Wi-Fi first, so the screen leads with the link people expect.
+    networks.sort((a, b) => a.kind.index.compareTo(b.kind.index));
     return LinkInfo(
-      address: map['address'] as String?,
-      prefixLength: (map['prefixLength'] as int?) ?? 0,
-      broadcast: map['broadcast'] as String?,
-      interfaceName: (map['interface'] as String?) ?? '',
+      networks: networks,
+      defaultKind: (map['defaultKind'] as String?) ?? 'none',
     );
   }
 

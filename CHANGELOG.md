@@ -4,6 +4,54 @@ Notable changes, newest first. Dates are ISO. Versions follow
 [semantic versioning](https://semver.org/): the wire protocol version is
 separate and is stated per release when it changes.
 
+## [1.1.0] — 2026-11-09
+
+Update **both** the app and the companion. A phone already paired with a PC
+keeps working across the update; pairing a new phone needs 1.1 on both sides.
+
+### Security
+- **Pairing could be broken by anyone on the network while the pairing window
+  was open.** In 1.0.0 the PC's first pairing reply let the device asking for
+  it recover the six-digit code offline in a fraction of a second, and pair as
+  a trusted phone. Pairing now commits before it reveals, on both sides, so a
+  device without the code gets one guess per code; every attempt replaces the
+  code on screen, and pairing stops after five. Details in `SECURITY.md`.
+  Wire protocol: pairing v2 (new `PAIR_COMMIT` and `PAIR_REVEAL` messages);
+  sessions and input are unchanged.
+
+### Added
+- **Phone hotspot and USB tethering** (#2). With no Wi-Fi router, connect the
+  PC to the phone's hotspot or turn on USB tethering, and the phone finds the
+  PC. It used to search only the network Android uses for the internet, which
+  is mobile data when the phone is sharing it.
+- **The companion tells you when Windows is blocking PhonePad**, on which
+  network, and why. For your own hotspot or tethering it offers to mark that one
+  network private, with one administrator prompt. It never opens PhonePad's
+  ports on public networks in general.
+- **Ads, kept out of the way.** The phone's home, layouts and settings screens
+  have one ad strip at the bottom: never on the controller, the editor or the
+  first-run pages, never over anything, and not at all where there is no room
+  for it, such as a phone held sideways. Consent is asked where the law
+  requires it, and can be changed in Settings. The companion has one sponsor
+  strip. When there is no ad to show, both strips show PhonePad's own message
+  instead of an empty box.
+- The companion shows its version in the title bar, which networks it is on and
+  how Windows treats each, and how many discovery probes it has heard, which
+  tells a "phone can't find the PC" problem on the network apart from one in
+  the reply.
+
+### Fixed
+- After USB tethering was switched off and on mid-session, the phone could sit
+  on "reconnecting" until the app was restarted. It now starts a fresh socket
+  when a reconnect attempt goes unanswered.
+- The phone labelled the mobile-data address "Wi-Fi address". It now lists each
+  local network by what it is.
+- Two notices in the companion were shown with long runs of spaces in them.
+
+### Not in this release
+- Several phones as separate controllers. It fits the architecture and is
+  planned for 1.2; `docs/ADR-002-multiplayer.md` explains why it is not here.
+
 ## [1.0.0] — 2026-09-13
 
 First public release.

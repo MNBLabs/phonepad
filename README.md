@@ -11,7 +11,8 @@
 **No controller? Use your phone.**
 
 Turns an Android phone into a wireless Xbox-compatible controller for Windows,
-over ordinary Wi-Fi. No Bluetooth. No cable. Nothing to buy.
+over ordinary Wi-Fi, or over the phone's own hotspot or USB tethering when there
+is no router. No Bluetooth. Nothing to buy.
 
 [Download](https://github.com/MNBLabs/phonepad/releases/latest) ·
 [Setup guide](https://phonepad.dynshift.com/setup/) ·
@@ -48,8 +49,9 @@ once — it is what lets a program create a virtual controller Windows can see.
 Then run **`PhonePad-Companion.exe`** from the
 [latest release](https://github.com/MNBLabs/phonepad/releases/latest). It is
 self-contained: no .NET, no installer. Windows will ask to allow it through the
-firewall — say yes for **private networks**. (If you miss the prompt, there is an
-"Add firewall rule" button under Advanced.)
+firewall — say yes for **private networks**. If Windows ever blocks PhonePad on a
+network this PC is on, the companion says so under **Windows is blocking
+PhonePad** and offers the fix.
 
 You should see **Waiting for your phone**, and a six-digit pairing code.
 
@@ -64,6 +66,22 @@ you are on the controller.
 
 After that first pairing, opening the app and tapping your PC connects straight
 through — no code, no IP addresses.
+
+### No Wi-Fi router? Use the phone's hotspot
+
+Turn on the phone's **hotspot** and connect the PC to it, or plug the phone in
+and turn on **USB tethering**. PhonePad finds the PC over either.
+
+Windows treats any network it has not seen before as public and blocks phones
+from reaching PhonePad there. The first time, the companion shows the network
+under **Windows is blocking PhonePad** with a **Make private** button: it marks
+that one network private, which is Windows' own way of saying "I trust this
+network", and needs one administrator prompt. A Wi-Fi hotspot is remembered
+after that. With USB tethering, many phones present a new network identity each
+time tethering starts, so Windows may ask again.
+
+PhonePad never opens its ports on public networks in general. That would include
+every café, hotel and airport Wi-Fi the PC ever joins.
 
 ### 3. Check Windows sees it
 
@@ -139,13 +157,18 @@ Touch  ->  TouchRouter  ->  ControllerState  ->  UDP (40 bytes)
 - **Send on change plus an unconditional repeat**, so a lost packet self-heals in
   a few milliseconds without retransmission. That is why this is UDP: a resent
   *stale* input would be worse than a dropped one.
-- **X25519 pairing** authenticated by the six-digit code, and every packet
-  carries a truncated HMAC plus a replay-window check. Nothing else on your
-  network can inject controller input. See [SECURITY.md](SECURITY.md).
+- **X25519 pairing** authenticated by the six-digit code, with each side
+  committing to its proof before the other reveals one, so the code cannot be
+  guessed offline and every wrong attempt retires it. Every packet carries a
+  truncated HMAC plus a replay-window check. Nothing else on your network can
+  inject controller input. See [SECURITY.md](SECURITY.md).
 - **Watchdog**: no valid packet for 120 ms and every control snaps back to
   neutral; 2 s and the session is dropped. Measured on real hardware — killing
   the app mid-button-press released it in 131 ms.
-- **Nothing leaves your network.** No account, no server, no telemetry.
+- **The controller never leaves your network.** No account, no server, no
+  telemetry. The phone's setup screens carry one ad strip and the companion one
+  sponsor strip; exactly what those contact is in the
+  [privacy policy](https://phonepad.dynshift.com/privacy/).
 
 Full reasoning, including why ViGEmBus was chosen over VHF, GameInput and vJoy,
 is in [`docs/ADR-001-architecture.md`](docs/ADR-001-architecture.md).
@@ -154,13 +177,18 @@ is in [`docs/ADR-001-architecture.md`](docs/ADR-001-architecture.md).
 
 ```powershell
 cd companion
-cargo test --workspace          # 71 tests
+cargo test --workspace          # 95 tests
 cargo build --release --workspace
 
 cd ..\phone
-flutter test                    # 84 tests
+flutter test                    # 99 tests
 flutter build apk --release --target-platform android-arm64
 ```
+
+A build from source carries no ads: the ad strip shows PhonePad's own placement
+and the ad SDK is never started. Ads need an AdMob unit at build time
+(`--dart-define=PHONEPAD_ADMOB_BANNER_ID=…`, plus `PHONEPAD_ADMOB_APP_ID` in the
+environment for Gradle).
 
 Release signing uses `phone/android/key.properties`, which is gitignored along
 with the keystore. Without it the release build still compiles but is signed with
@@ -177,7 +205,9 @@ invariants worth knowing, and the pitfalls already paid for.
   but strong and weak are combined into a single vibration.
 - **Gyro aiming is not implemented.** The protocol reserves a flag; nothing else
   about it exists yet.
-- **One phone at a time.**
+- **One phone at a time.** Several phones as separate controllers is planned for
+  1.2; the design and the reasons it is not in 1.1 are in
+  [`docs/ADR-002-multiplayer.md`](docs/ADR-002-multiplayer.md).
 - **ViGEmBus is end-of-life** (archived 2023). It works well and is what Parsec
   and DS4Windows use, but the backend sits behind a trait so a successor can
   replace it without touching anything else.
@@ -205,7 +235,10 @@ fork the code freely, but give your fork its own name. See
 ## Supporting it
 
 PhonePad is free and open source, and the controller is not going behind a
-paywall. If it saved you buying a controller, you can support development:
+paywall: hotspot and USB tethering included. It is paid for by one ad strip on
+the phone's setup screens (never on the controller) and one sponsor strip in the
+companion. If it saved you buying a controller, you can also support development
+directly:
 
 - [**GitHub Sponsors**](https://github.com/sponsors/MNBLabs) — if you already
   use GitHub and want to support open-source development directly through it

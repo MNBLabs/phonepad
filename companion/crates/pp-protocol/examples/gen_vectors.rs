@@ -299,6 +299,14 @@ fn main() {
     let server_nonce = [0x99u8; 16];
     let session_key = crypto::derive_session_key(&cs.token, &client_nonce, &server_nonce);
 
+    // Pairing v2 commitments. The nonces are fixed here and random in use.
+    let server_confirm = ss.server_confirm(&client.public, &server.public, code);
+    let client_confirm = cs.client_confirm(&client.public, &server.public, code);
+    let server_commit_nonce = [0xAAu8; 16];
+    let client_commit_nonce = [0xBBu8; 16];
+    let server_commit = crypto::server_commitment(&server_confirm, &server_commit_nonce);
+    let client_commit = crypto::client_commitment(&client_confirm, &client_commit_nonce);
+
     cases.push(format!(
         r#"    {{
       "name": "pairing_exchange",
@@ -315,6 +323,10 @@ fn main() {
       "clientNonce": "{}",
       "serverNonce": "{}",
       "sessionKey": "{}",
+      "serverCommitNonce": "{}",
+      "clientCommitNonce": "{}",
+      "serverCommit": "{}",
+      "clientCommit": "{}",
       "bytes": ""
     }}"#,
         hex(&client_scalar),
@@ -328,6 +340,105 @@ fn main() {
         hex(&client_nonce),
         hex(&server_nonce),
         hex(&session_key),
+        hex(&server_commit_nonce),
+        hex(&client_commit_nonce),
+        hex(&server_commit),
+        hex(&client_commit),
+    ));
+
+    // --- PAIRING v2 wire format ---------------------------------------------
+    let pair_req = PairReq {
+        device_id,
+        client_pub: client.public,
+        name: "Pixel 9".into(),
+        commit_scheme: true,
+    };
+    cases.push(format!(
+        r#"    {{
+      "name": "pair_req_v2",
+      "type": "pairReq",
+      "deviceId": "{}",
+      "clientPub": "{}",
+      "deviceName": "{}",
+      "bytes": "{}"
+    }}"#,
+        hex(&device_id),
+        hex(&client.public),
+        pair_req.name,
+        hex(&encode_pair_req(&pair_req))
+    ));
+
+    let pair_resp = PairResp {
+        status: PairStatus::Ok,
+        server_pub: server.public,
+        server_commit,
+        commit_scheme: true,
+    };
+    cases.push(format!(
+        r#"    {{
+      "name": "pair_resp_v2",
+      "type": "pairResp",
+      "status": 0,
+      "serverPub": "{}",
+      "serverCommit": "{}",
+      "bytes": "{}"
+    }}"#,
+        hex(&server.public),
+        hex(&server_commit),
+        hex(&encode_pair_resp(&pair_resp))
+    ));
+
+    cases.push(format!(
+        r#"    {{
+      "name": "pair_commit",
+      "type": "pairCommit",
+      "deviceId": "{}",
+      "clientCommit": "{}",
+      "bytes": "{}"
+    }}"#,
+        hex(&device_id),
+        hex(&client_commit),
+        hex(&encode_pair_commit(&PairCommit {
+            device_id,
+            client_commit
+        }))
+    ));
+
+    cases.push(format!(
+        r#"    {{
+      "name": "pair_reveal",
+      "type": "pairReveal",
+      "status": 0,
+      "serverConfirm": "{}",
+      "serverNonce": "{}",
+      "bytes": "{}"
+    }}"#,
+        hex(&server_confirm),
+        hex(&server_commit_nonce),
+        hex(&encode_pair_reveal(&PairReveal {
+            status: PairStatus::Ok,
+            server_confirm,
+            server_nonce: server_commit_nonce,
+        }))
+    ));
+
+    cases.push(format!(
+        r#"    {{
+      "name": "pair_confirm_v2",
+      "type": "pairConfirm",
+      "deviceId": "{}",
+      "clientConfirm": "{}",
+      "clientNonce": "{}",
+      "bytes": "{}"
+    }}"#,
+        hex(&device_id),
+        hex(&client_confirm),
+        hex(&client_commit_nonce),
+        hex(&encode_pair_confirm(&PairConfirm {
+            device_id,
+            client_confirm,
+            client_nonce: client_commit_nonce,
+        }))
     ));
 
     println!("{{");

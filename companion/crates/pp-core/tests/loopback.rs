@@ -12,8 +12,10 @@ use std::sync::atomic::{AtomicU16, Ordering};
 use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 
-use pp_core::server::{Core, DROP_AFTER, NEUTRAL_AFTER};
-use pp_protocol::crypto::{ct_eq32, PairingKeys};
+use pp_core::server::{Core, PairOutcome, DROP_AFTER, MAX_PAIRING_ATTEMPTS, NEUTRAL_AFTER};
+use pp_protocol::crypto::{
+    client_commitment, ct_eq32, random_bytes, server_commitment, PairingKeys, PairingSecrets,
+};
 use pp_protocol::*;
 
 /// Hand out an unused high port.
@@ -179,38 +181,85 @@ impl FakePhone {
         decode_discover_resp(&raw).expect("malformed discovery reply")
     }
 
-    /// Full X25519 + code exchange. Returns the status the PC ended on.
-    fn pair(&mut self, to: SocketAddr, code: &str) -> PairStatus {
+    /// Step 1: PAIR_REQ. Returns our keys and the PC's reply.
+    fn pair_request(&self, to: SocketAddr) -> (PairingKeys, PairResp) {
         let keys = PairingKeys::generate();
         let req = PairReq {
             device_id: self.device_id,
             client_pub: keys.public,
             name: "Test Phone".into(),
+            commit_scheme: true,
         };
         let raw = self
             .round_trip(to, &encode_pair_req(&req), msg::PAIR_RESP)
             .expect("no pair reply");
-        let resp = decode_pair_resp(&raw).expect("malformed pair reply");
+        (keys, decode_pair_resp(&raw).expect("malformed pair reply"))
+    }
+
+    /// Step 2: PAIR_COMMIT. Returns the PC's reveal.
+    fn pair_commit(&self, to: SocketAddr, client_commit: [u8; 32]) -> PairReveal {
+        let raw = self
+            .round_trip(
+                to,
+                &encode_pair_commit(&PairCommit {
+                    device_id: self.device_id,
+                    client_commit,
+                }),
+                msg::PAIR_REVEAL,
+            )
+            .expect("no pair reveal");
+        decode_pair_reveal(&raw).expect("malformed pair reveal")
+    }
+
+    /// Step 3: PAIR_CONFIRM. Returns the PC's verdict.
+    fn pair_confirm(
+        &self,
+        to: SocketAddr,
+        client_confirm: [u8; 32],
+        nonce: [u8; 16],
+    ) -> PairStatus {
+        let raw = self
+            .round_trip(
+                to,
+                &encode_pair_confirm(&PairConfirm {
+                    device_id: self.device_id,
+                    client_confirm,
+                    client_nonce: nonce,
+                }),
+                msg::PAIR_RESULT,
+            )
+            .expect("no pair result");
+        decode_pair_result(&raw).expect("malformed pair result")
+    }
+
+    /// The whole v2 exchange, as an honest phone runs it.
+    fn pair(&mut self, to: SocketAddr, code: &str) -> PairStatus {
+        let (keys, resp) = self.pair_request(to);
         if resp.status != PairStatus::Ok {
             return resp.status;
         }
-
+        assert!(resp.commit_scheme, "the PC must answer in pairing v2");
         let secrets = keys.agree(&resp.server_pub, &self.device_id);
 
-        // The phone verifies the PC knew the code before revealing anything.
+        let client_confirm = secrets.client_confirm(&keys.public, &resp.server_pub, code);
+        let nonce = random_bytes::<16>();
+        let reveal = self.pair_commit(to, client_commitment(&client_confirm, &nonce));
+        if reveal.status != PairStatus::Ok {
+            return reveal.status;
+        }
+
+        // Only reveal our proof once the PC has proved it knew the code, and
+        // that its proof is the one it committed to before seeing ours.
         let expected = secrets.server_confirm(&keys.public, &resp.server_pub, code);
-        if !ct_eq32(&expected, &resp.server_confirm) {
+        let opens = ct_eq32(
+            &server_commitment(&reveal.server_confirm, &reveal.server_nonce),
+            &resp.server_commit,
+        );
+        if !opens || !ct_eq32(&expected, &reveal.server_confirm) {
             return PairStatus::CodeMismatch;
         }
 
-        let confirm = PairConfirm {
-            device_id: self.device_id,
-            client_confirm: secrets.client_confirm(&keys.public, &resp.server_pub, code),
-        };
-        let raw = self
-            .round_trip(to, &encode_pair_confirm(&confirm), msg::PAIR_RESULT)
-            .expect("no pair result");
-        let status = decode_pair_result(&raw).expect("malformed pair result");
+        let status = self.pair_confirm(to, client_confirm, nonce);
         if status == PairStatus::Ok {
             self.token = Some(secrets.token);
         }
@@ -532,4 +581,168 @@ fn shutdown_stops_the_threads() {
     drop(h); // triggers Core::shutdown
     assert!(!shared.is_running());
     assert!(!shared.stats.gauges.connected.load(Relaxed));
+}
+
+// --- pairing security ----------------------------------------------------------
+//
+// These play the attacker. Pairing v1 lost the code to a single request: the
+// PC's reply carried an HMAC over the code under a key the requester shared,
+// so all million codes could be tried offline in a fraction of a second, and
+// the requester then paired as a trusted phone. The tests below pin down why
+// that no longer works.
+
+/// Try every code against a proof the PC revealed. Returns the code if found.
+fn brute_force(
+    secrets: &PairingSecrets,
+    client_pub: &[u8; 32],
+    resp: &PairResp,
+    tag: &[u8; 32],
+) -> Option<String> {
+    (0..1_000_000u32).map(|c| format!("{c:06}")).find(|c| {
+        ct_eq32(
+            &secrets.server_confirm(client_pub, &resp.server_pub, c),
+            tag,
+        )
+    })
+}
+
+#[test]
+fn a_pair_response_carries_nothing_a_code_can_be_tested_against() {
+    let h = Harness::start();
+    let attacker = FakePhone::new([0xA1; 16]);
+    let (keys, resp) = attacker.pair_request(h.discovery);
+    assert_eq!(resp.status, PairStatus::Ok);
+    let secrets = keys.agree(&resp.server_pub, &attacker.device_id);
+
+    // The v1 attack, verbatim: the third field is a commitment, not the proof.
+    assert_eq!(
+        brute_force(&secrets, &keys.public, &resp, &resp.server_commit),
+        None
+    );
+}
+
+#[test]
+fn a_code_learned_from_a_reveal_has_already_been_retired() {
+    let h = Harness::start();
+    let code_before = h.pairing_code();
+    let mut attacker = FakePhone::new([0xA2; 16]);
+
+    // Commit to garbage to make the PC reveal its proof, then recover the code
+    // offline, as an attacker would.
+    let (keys, resp) = attacker.pair_request(h.discovery);
+    let secrets = keys.agree(&resp.server_pub, &attacker.device_id);
+    let reveal = attacker.pair_commit(h.discovery, [0u8; 32]);
+    assert_eq!(reveal.status, PairStatus::Ok);
+    let learned = brute_force(&secrets, &keys.public, &resp, &reveal.server_confirm)
+        .expect("the revealed proof is for the code that was on screen");
+    assert_eq!(learned, code_before);
+
+    // The reveal consumed it: the PC is already showing another code, and the
+    // learned one pairs nothing.
+    assert_ne!(h.pairing_code(), code_before);
+    assert_eq!(
+        attacker.pair(h.discovery, &learned),
+        PairStatus::CodeMismatch
+    );
+    assert!(!h
+        .core()
+        .shared
+        .config
+        .lock()
+        .unwrap()
+        .is_paired(&attacker.device_id));
+}
+
+#[test]
+fn a_reveal_cancels_every_other_attempt_in_flight() {
+    // An attacker opens two attempts, learns the code from the first, and
+    // tries to commit the right answer in the second.
+    let h = Harness::start();
+    let first = FakePhone::new([0xA3; 16]);
+    let second = FakePhone::new([0xA4; 16]);
+    let _ = first.pair_request(h.discovery);
+    let (keys2, resp2) = second.pair_request(h.discovery);
+
+    let reveal = first.pair_commit(h.discovery, [0u8; 32]);
+    assert_eq!(reveal.status, PairStatus::Ok);
+
+    let secrets2 = keys2.agree(&resp2.server_pub, &second.device_id);
+    let guess = secrets2.client_confirm(&keys2.public, &resp2.server_pub, "000000");
+    let nonce = [7u8; 16];
+    let late = second.pair_commit(h.discovery, client_commitment(&guess, &nonce));
+    assert_eq!(late.status, PairStatus::Rejected);
+}
+
+#[test]
+fn pairing_stops_after_the_allowed_number_of_attempts() {
+    let h = Harness::start();
+    for i in 0..MAX_PAIRING_ATTEMPTS {
+        let mut phone = FakePhone::new([0xB0 + i as u8; 16]);
+        let wrong = format!(
+            "{:06}",
+            (h.pairing_code().parse::<u32>().unwrap() + 1) % 1_000_000
+        );
+        let (keys, resp) = phone.pair_request(h.discovery);
+        let secrets = keys.agree(&resp.server_pub, &phone.device_id);
+        let tag = secrets.client_confirm(&keys.public, &resp.server_pub, &wrong);
+        let nonce = [1u8; 16];
+        assert_eq!(
+            phone
+                .pair_commit(h.discovery, client_commitment(&tag, &nonce))
+                .status,
+            PairStatus::Ok
+        );
+        // A guesser opens its commitment regardless; an honest phone would not.
+        assert_eq!(
+            phone.pair_confirm(h.discovery, tag, nonce),
+            PairStatus::CodeMismatch
+        );
+        phone.token = None;
+    }
+
+    let pairing = h.core().shared.pairing.lock().unwrap();
+    assert!(!pairing.active, "pairing must close after the last attempt");
+    assert_eq!(pairing.last_outcome, Some(PairOutcome::TooManyAttempts));
+}
+
+#[test]
+fn a_wrong_code_shows_a_new_one_and_the_right_one_still_pairs() {
+    let h = Harness::start();
+    let mut phone = FakePhone::new([0xA5; 16]);
+    let first = h.pairing_code();
+    let wrong = format!("{:06}", (first.parse::<u32>().unwrap() + 1) % 1_000_000);
+    assert_eq!(phone.pair(h.discovery, &wrong), PairStatus::CodeMismatch);
+
+    let second = h.pairing_code();
+    assert_ne!(
+        first, second,
+        "the PC must show a fresh code after a failed attempt"
+    );
+    assert_eq!(phone.pair(h.discovery, &second), PairStatus::Ok);
+}
+
+#[test]
+fn a_phone_running_1_0_is_refused_by_name() {
+    let h = Harness::start();
+    let old = FakePhone::new([0xA6; 16]);
+    let keys = PairingKeys::generate();
+    let v1 = PairReq {
+        device_id: old.device_id,
+        client_pub: keys.public,
+        name: "Old Phone".into(),
+        commit_scheme: false,
+    };
+    let raw = old
+        .round_trip(h.discovery, &encode_pair_req(&v1), msg::PAIR_RESP)
+        .expect("no reply");
+    let resp = decode_pair_resp(&raw).unwrap();
+    assert_eq!(resp.status, PairStatus::Rejected);
+    assert_eq!(
+        resp.server_commit, [0u8; 32],
+        "nothing derived from the code"
+    );
+    assert_eq!(
+        h.core().shared.pairing.lock().unwrap().last_outcome,
+        Some(PairOutcome::Outdated("Old Phone".into()))
+    );
 }

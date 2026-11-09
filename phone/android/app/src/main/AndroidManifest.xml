@@ -14,6 +14,13 @@
         android:label="PhonePad"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- AdMob's application id, filled in by Gradle (build.gradle.kts).
+             The SDK refuses to start without one, so a build with no ads gets
+             Google's published sample id; such a build never initialises the
+             SDK or requests an ad (lib/core/ads.dart). -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="${admobAppId}"/>
         <activity
             android:name=".MainActivity"
             android:exported="true"

@@ -14,3 +14,28 @@ path = "src/main.rs"
 pp-core = { path = "../pp-core" }
 pp-protocol = { path = "../pp-protocol" }
 eframe = "0.32"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Already in the lock through eframe, so this adds no new crate: Network List
+# Manager and the firewall policy (which networks block PhonePad, see
+# netprofile.rs), ShellExecute to elevate one narrow action, and WinHTTP for
+# the sponsor strip, using Windows' own TLS and proxy settings.
+[dependencies.windows]
+version = "0.61"
+features = [
+    "Win32_Foundation",
+    "Win32_NetworkManagement_IpHelper",
+    "Win32_NetworkManagement_Ndis",
+    "Win32_NetworkManagement_WindowsFirewall",
+    "Win32_Networking_NetworkListManager",
+    "Win32_Networking_WinHttp",
+    "Win32_Networking_WinSock",
+    "Win32_System_Com",
+    "Win32_System_Ole",
+    "Win32_System_Registry",
+    "Win32_System_Threading",
+    "Win32_System_Variant",
+    "Win32_UI_Shell",
+    "Win32_UI_WindowsAndMessaging",
+]

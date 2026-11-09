@@ -166,12 +166,13 @@ class AppController extends ChangeNotifier {
 
   // --- connection ------------------------------------------------------------
 
-  /// Discovery, seeded with the subnet broadcast address from the platform
-  /// channel because some access points drop 255.255.255.255.
+  /// Discovery across every local link the phone has, including a hotspot or
+  /// USB tethering it is providing itself. Re-read each time: turning the
+  /// hotspot on is exactly the kind of change a search should notice.
   Future<List<DiscoveredPc>> discover() async {
     link = await PhonePadPlatform.linkInfo();
-    final extras = <String>[if (link.broadcast != null) link.broadcast!];
-    return connection.discover(extraTargets: extras);
+    notifyListeners();
+    return connection.discover(link: link);
   }
 
   @override

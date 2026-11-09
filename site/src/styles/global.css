@@ -285,6 +285,39 @@ figcaption {
   background: var(--raised);
 }
 
+/* The current release, above the home page headline. A pill like the buttons,
+   raised on paper with a hairline; the accent is only on the tag. */
+.release-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin-bottom: 1.6rem;
+  padding: 5px 14px 5px 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--raised);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.3;
+  text-decoration: none;
+  transition: border-color var(--beat);
+}
+.release-pill:hover {
+  border-color: var(--ink3);
+  color: var(--ink);
+}
+.release-tag {
+  flex: none;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .lede {
   font-size: 1.25rem;
   line-height: 1.5;
@@ -419,6 +452,7 @@ header.site nav {
 header.site nav a {
   color: var(--ink2);
   text-decoration: none;
+  white-space: nowrap;
 }
 header.site nav a:hover,
 header.site nav a[aria-current="page"] {
@@ -502,6 +536,11 @@ footer.site ul {
     font-size: 0.9rem;
   }
   header.site nav a.hide-sm {
+    display: none;
+  }
+}
+@media (max-width: 380px) {
+  header.site nav a.hide-xs {
     display: none;
   }
   body {

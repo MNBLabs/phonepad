@@ -32,6 +32,8 @@ silently dropped. Counters surface in the companion diagnostics pane.
 | `0x02` | DISCOVER_RESP | PC → phone (unicast) |
 | `0x03` | PAIR_REQ | phone → PC :47800 |
 | `0x04` | PAIR_RESP | PC → phone |
+| `0x09` | PAIR_COMMIT | phone → PC |
+| `0x0A` | PAIR_REVEAL | PC → phone |
 | `0x07` | PAIR_CONFIRM | phone → PC |
 | `0x08` | PAIR_RESULT | PC → phone |
 | `0x05` | SESSION_REQ | phone → PC :47801 |
@@ -44,9 +46,24 @@ silently dropped. Counters surface in the companion diagnostics pane.
 
 ## Discovery
 
-The phone broadcasts to **both** `255.255.255.255` and the subnet-directed broadcast
-address (the subnet broadcast address, e.g. `192.168.x.255`, computed from the Kotlin link-info call) because some access
-points drop the all-ones address. The PC replies **unicast to the source address**.
+The phone sends the probe to:
+
+- the **subnet-directed broadcast address of every local IPv4 link**: its Wi-Fi,
+  and any network it is providing itself (hotspot, USB or Bluetooth tethering).
+  The Kotlin side enumerates interfaces and leaves out cellular and VPN links by
+  transport, not by address, because carriers commonly use private 10.x
+  addresses;
+- `255.255.255.255`, **only** when the phone's default network is Wi-Fi or
+  Ethernet. Otherwise the kernel routes it over mobile data;
+- the last address of each paired PC, **only** when it lies inside one of those
+  links, in case broadcast is filtered.
+
+Some access points drop the all-ones address but forward subnet broadcasts,
+which is why both are sent. Tethering is why every link is: when the phone
+shares its connection, the PC sits on a tethering interface that is never
+Android's default network, and the kernel keeps a `broadcast <subnet>.255` route
+for each interface in its local table, so a subnet-directed probe leaves on the
+link it names. The PC replies **unicast to the source address**.
 
 This direction matters: the phone therefore only ever needs to *receive a unicast*, which
 sidesteps Android's multicast-lock flakiness entirely.
@@ -77,19 +94,27 @@ sidesteps Android's multicast-lock flakiness entirely.
 
 ---
 
-## Pairing — X25519 + 6-digit code
+## Pairing — X25519 + 6-digit code, commit then reveal (pairing v2)
 
 The code is displayed by the companion and typed on the phone. It authenticates the
-Diffie–Hellman exchange, so a device sniffing the LAN cannot man-in-the-middle it.
+Diffie–Hellman exchange, so a device on the network can neither man-in-the-middle it
+nor pair without the code.
+
+Six digits are a million possibilities, which is nothing to try offline. So no
+message ever lets a peer test guesses at leisure: each side **commits** to its proof
+of the code before the other **reveals** one, and the PC retires the code the moment
+it reveals.
 
 ```
-phone                                             PC
-  |-- PAIR_REQ  deviceId, clientPub ------------->|   (pairing mode must be active)
-  |<-- PAIR_RESP status, serverPub, srvConfirm ---|
-  |   user types the 6-digit code                 |
-  |   verify srvConfirm  -> proves PC knows code  |
-  |-- PAIR_CONFIRM deviceId, cliConfirm --------->|   proves phone knows code
-  |<-- PAIR_RESULT status ------------------------|
+phone                                                     PC
+  |-- PAIR_REQ     deviceId, clientPub ------------------->|  pairing mode must be on
+  |<-- PAIR_RESP   status, serverPub, H(srvConfirm, rs) ---|  a commitment, not the proof
+  |   user has typed the code                              |
+  |-- PAIR_COMMIT  deviceId, H(cliConfirm, rc) ----------->|  phone commits first
+  |<-- PAIR_REVEAL status, srvConfirm, rs -----------------|  PC opens; code is retired
+  |   check H(srvConfirm, rs) and srvConfirm               |
+  |-- PAIR_CONFIRM deviceId, cliConfirm, rc -------------->|  phone opens only if both pass
+  |<-- PAIR_RESULT status ---------------------------------|
 ```
 
 ```
@@ -97,11 +122,57 @@ shared     = X25519(ourPriv, theirPub)
 k          = HKDF-SHA256(shared, salt = "phonepad-v1", info = "pair")
 srvConfirm = HMAC-SHA256(k, "pp-srv" || clientPub || serverPub || codeAscii)
 cliConfirm = HMAC-SHA256(k, "pp-cli" || clientPub || serverPub || codeAscii)
+srvCommit  = SHA-256("pp-commit-srv" || srvConfirm || rs)      rs, rc: 16 random bytes
+cliCommit  = SHA-256("pp-commit-cli" || cliConfirm || rc)
 token      = HKDF-SHA256(shared, salt = "phonepad-v1", info = "token" || deviceId)
 ```
 
 **The 32-byte `token` is never transmitted** — both sides derive it independently and
 persist it. It is the long-term credential for that phone/PC pair.
+
+### Rules that make it hold
+
+- **The PC retires the code on every reveal.** As soon as it sends PAIR_REVEAL it
+  shows a new code and discards every other attempt in flight. A peer that commits a
+  guess learns the old code from the reveal (it holds `k`), but that code no longer
+  pairs anything.
+- **The phone reveals last.** It sends `cliConfirm` only after `srvConfirm` opens the
+  commitment from PAIR_RESP *and* matches the code the user typed. A rogue "PC" had
+  to commit before it could have known the code, so it cannot pass; the phone stops
+  and reveals nothing.
+- **At most five reveals per pairing window**, then pairing mode closes. A device
+  without the code succeeds with probability at most 5 in a million per click of
+  "Pair a phone".
+- **No fallback.** The v2 forms of PAIR_REQ, PAIR_RESP and PAIR_CONFIRM set header
+  flag bit 0. A 1.1 companion answers a request without it with `Rejected` and
+  nothing derived from the code; a 1.1 phone refuses a reply without it. Either side
+  says which one needs updating.
+- At most eight attempts are kept in flight; the device id keying them is chosen by
+  whoever sends the request.
+
+### Pairing v1 (1.0.0) and why it was replaced
+
+In v1, PAIR_RESP carried `srvConfirm` itself. Any device could send one PAIR_REQ with
+a key pair of its own, compute `k`, and test all million codes against the reply
+offline in well under a second, then send a valid PAIR_CONFIRM and be paired. The
+loopback tests in `pp-core/tests/loopback.rs` now play that attacker against the
+companion.
+
+### Layouts
+
+**PAIR_REQ** — header (flags bit 0 = v2), `deviceId` (16), `clientPub` (32), `nameLen` (1), `name` (n)
+
+**PAIR_RESP** — 69 bytes: header (flags bit 0 = v2), `status` (1), `serverPub` (32), `srvCommit` (32)
+
+**PAIR_COMMIT** — 52 bytes: header, `deviceId` (16), `cliCommit` (32)
+
+**PAIR_REVEAL** — 53 bytes: header, `status` (1), `srvConfirm` (32), `rs` (16)
+
+**PAIR_CONFIRM** — 68 bytes: header (flags bit 0 = v2), `deviceId` (16), `cliConfirm` (32), `rc` (16)
+
+**PAIR_RESULT** — 5 bytes: header, `status` (1)
+
+`status`: `0` ok · `1` not in pairing mode · `2` code mismatch · `3` rejected
 
 ---
 

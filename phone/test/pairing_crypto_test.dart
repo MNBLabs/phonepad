@@ -83,6 +83,87 @@ void main() {
     expect(hex(right), isNot(hex(wrong)));
   });
 
+  test('pairing v2 commitments match the Rust vector', () async {
+    final client = await PairingKeys.fromSeed(unhex(v['clientScalar'] as String));
+    final server = await PairingKeys.fromSeed(unhex(v['serverScalar'] as String));
+    final cs = await client.agree(server.publicKey, unhex(v['deviceId'] as String));
+    final code = v['code'] as String;
+
+    expect(
+      hex(serverCommitment(
+        cs.serverConfirm(client.publicKey, server.publicKey, code),
+        unhex(v['serverCommitNonce'] as String),
+      )),
+      v['serverCommit'],
+    );
+    expect(
+      hex(clientCommitment(
+        cs.clientConfirm(client.publicKey, server.publicKey, code),
+        unhex(v['clientCommitNonce'] as String),
+      )),
+      v['clientCommit'],
+    );
+  });
+
+  group('the phone only reveals its proof to a PC that proved the code', () {
+    late Uint8List clientPub, serverPub, nonce, commit, rightTag;
+    late PairingSecrets cs;
+
+    setUp(() async {
+      final client = await PairingKeys.fromSeed(unhex(v['clientScalar'] as String));
+      final server = await PairingKeys.fromSeed(unhex(v['serverScalar'] as String));
+      clientPub = client.publicKey;
+      serverPub = server.publicKey;
+      cs = await client.agree(serverPub, unhex(v['deviceId'] as String));
+      nonce = unhex(v['serverCommitNonce'] as String);
+      rightTag = cs.serverConfirm(clientPub, serverPub, '314159');
+      commit = serverCommitment(rightTag, nonce);
+    });
+
+    test('accepts the honest reveal', () {
+      expect(
+        serverRevealIsValid(
+          serverCommit: commit,
+          revealedConfirm: rightTag,
+          revealedNonce: nonce,
+          expectedConfirm: rightTag,
+        ),
+        isTrue,
+      );
+    });
+
+    test('refuses when the user typed a different code', () {
+      expect(
+        serverRevealIsValid(
+          serverCommit: commit,
+          revealedConfirm: rightTag,
+          revealedNonce: nonce,
+          expectedConfirm: cs.serverConfirm(clientPub, serverPub, '314158'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('refuses a correct proof that does not open the earlier commitment',
+        () {
+      // An impostor that committed before it knew the code, then learned the
+      // code elsewhere and reveals the right proof: the opening cannot match.
+      final impostorCommit = serverCommitment(
+        cs.serverConfirm(clientPub, serverPub, '000000'),
+        nonce,
+      );
+      expect(
+        serverRevealIsValid(
+          serverCommit: impostorCommit,
+          revealedConfirm: rightTag,
+          revealedNonce: nonce,
+          expectedConfirm: rightTag,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   test('session key matches the Rust vector', () async {
     final key = deriveSessionKey(
       unhex(v['token'] as String),

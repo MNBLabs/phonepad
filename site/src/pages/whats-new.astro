@@ -1,0 +1,147 @@
+---
+import Base from "../layouts/Base.astro";
+import {
+  DOWNLOAD_APK,
+  DOWNLOAD_COMPANION,
+  DOWNLOAD_SUMS,
+  RELEASE_NOTES,
+  CHANGELOG,
+  VERSION,
+  VERSION_SHORT,
+  RELEASE_DATE,
+  REPO,
+} from "../consts";
+---
+
+<Base
+  title={`What's new in PhonePad ${VERSION_SHORT}`}
+  description={`PhonePad ${VERSION_SHORT}: play over your phone's hotspot or USB tethering, a companion that tells you when Windows is blocking it, and pairing that cannot be broken offline. Update both the app and the companion.`}
+  article
+>
+  <section>
+    <div class="wrap prose">
+      <p class="small muted">PhonePad {VERSION} · {RELEASE_DATE}</p>
+      <h1 style="font-size:clamp(2rem,5vw,3rem)">What's new in {VERSION_SHORT}</h1>
+      <p class="lede">
+        No Wi-Fi router? Play over the phone's own hotspot or USB tethering.
+        The PC now tells you when Windows is in the way, and pairing is built so
+        nothing on your network can break it.
+      </p>
+
+      <div class="card" style="margin-block:2rem">
+        <h3>Update both the app and the companion</h3>
+        <p class="muted">
+          A phone that is already paired keeps working across the update.
+          Pairing a phone needs {VERSION_SHORT} on both sides, and each one
+          tells you if the other is out of date.
+        </p>
+        <div class="cta" style="margin-top:1rem">
+          <a class="btn btn-primary" href={DOWNLOAD_APK} rel="noopener">Download the app</a>
+          <a class="btn btn-ghost" href={DOWNLOAD_COMPANION} rel="noopener">Download the companion</a>
+        </div>
+        <p class="small muted" style="margin-top:1rem;margin-bottom:0">
+          Install the new app over the old one; your layouts and pairings stay.
+          Replace the old companion with the new file. Checksums are in
+          <a href={DOWNLOAD_SUMS} rel="noopener">SHA256SUMS.txt</a>.
+        </p>
+      </div>
+
+      <h2>Play over the phone's hotspot or USB tethering</h2>
+      <p>
+        Turn on the phone's hotspot and connect the PC to it, or plug the phone
+        in and turn on USB tethering. PhonePad finds the PC over either.
+      </p>
+      <p>
+        Before, the phone only searched the network Android uses for the
+        internet, and when the phone is sharing its connection that is mobile
+        data, so the PC was never found
+        (<a href={`${REPO}/issues/2`} rel="noopener">issue #2</a>). It now
+        searches every local network it is part of, including the ones it is
+        providing, and leaves mobile data out so the search never goes to your
+        carrier.
+      </p>
+      <p>
+        It is free, like everything that makes the controller reach the PC.
+        <a href="/setup/">The setup guide</a> has the steps.
+      </p>
+
+      <h2>The companion tells you when Windows is blocking PhonePad</h2>
+      <p>
+        Windows treats any network it has not seen before as public, and blocks
+        phones from reaching PhonePad there. That was the other half of
+        "No PC found" on a hotspot, and nothing said so.
+      </p>
+      <p>
+        Now the companion shows <em>Windows is blocking PhonePad</em>, names the
+        network, and says why. For your own phone's hotspot or tethering it
+        offers <strong>Make private</strong>: one administrator prompt, and only
+        that network is trusted. A Wi-Fi hotspot is remembered after that. With
+        USB tethering, many phones present a new network each time tethering
+        starts, so Windows may ask again.
+      </p>
+      <p>
+        PhonePad does not open its ports on public networks in general. That
+        was suggested as a fix, and it would have included every café, hotel and
+        airport network the PC ever joins.
+      </p>
+
+      <h2>Pairing that cannot be broken offline</h2>
+      <p>
+        In 1.0, a device on the same network could recover the six-digit code
+        from the PC's first pairing reply while the pairing window was open, and
+        pair itself as a trusted phone. In {VERSION_SHORT} each side commits to
+        its proof of the code before the other reveals one, and the PC shows a
+        new code after every attempt, so a device without the code gets one
+        guess per code, and pairing stops after five.
+      </p>
+      <p>
+        If you ever paired while running 1.0 on a network you do not control,
+        look at <em>Trusted phones</em> in the companion and forget anything you
+        do not recognise. The details are in
+        <a href={`${REPO}/blob/main/SECURITY.md`} rel="noopener">SECURITY.md</a>.
+      </p>
+
+      <h2>Ads, kept out of the way</h2>
+      <p>
+        PhonePad stays free. The app's home, layouts and settings screens have
+        one ad strip at the bottom: never on the controller, never over a
+        button, and not at all where there is no room for it, such as a phone
+        held sideways. The companion has one sponsor strip. Where the law asks,
+        Google's consent message comes first, and your choice can be changed in
+        <em>Settings → Ads</em>. What each strip sends is in the
+        <a href="/privacy/">privacy policy</a>.
+      </p>
+
+      <h2>Smaller things</h2>
+      <ul>
+        <li>
+          If USB tethering is switched off and on mid-game, the phone reconnects
+          by itself instead of waiting on "reconnecting" until restarted.
+        </li>
+        <li>
+          The phone lists each network it is on by what it is: Wi-Fi, Hotspot,
+          USB tethering. It used to call a mobile-data address "Wi-Fi address".
+        </li>
+        <li>
+          The companion shows its version, which networks the PC is on, and how
+          many search probes it has heard from phones, which tells a network
+          problem apart from everything else.
+        </li>
+      </ul>
+
+      <h2>Not in this release</h2>
+      <p>
+        Several phones as separate controllers, for local multiplayer, is
+        planned for 1.2. It fits the design, and it touches the part that
+        guarantees a dropped phone can never leave a button held, so it gets a
+        release of its own.
+        <a href={`${REPO}/blob/main/docs/ADR-002-multiplayer.md`} rel="noopener">The plan is public.</a>
+      </p>
+
+      <p class="small muted" style="margin-top:3rem">
+        Every change is in the <a href={CHANGELOG} rel="noopener">changelog</a>
+        and on the <a href={RELEASE_NOTES} rel="noopener">release page</a>.
+      </p>
+    </div>
+  </section>
+</Base>

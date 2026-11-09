@@ -155,11 +155,14 @@ class _DiagnosticsScreenState extends State<DiagnosticsScreen> {
                       ? kGood
                       : kWarn,
                 ),
-                StatRow(
-                  'Wi-Fi address',
-                  demoOr(c.link.address ?? 'unknown', kDemoAddress),
-                ),
-                StatRow('Subnet broadcast', c.link.broadcast ?? 'unknown'),
+                for (final n in c.link.networks)
+                  StatRow(
+                    '${n.kind.label} (${n.interfaceName})',
+                    demoOr('${n.address}/${n.prefixLength}', kDemoAddress),
+                  ),
+                if (c.link.networks.isEmpty)
+                  const StatRow('Local network', 'none', color: kWarn),
+                StatRow('Default network', c.link.defaultKind),
                 StatRow('Send rate target', '${c.settings.sendRateHz} Hz'),
               ],
             ),

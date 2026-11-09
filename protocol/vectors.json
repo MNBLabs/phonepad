@@ -131,7 +131,50 @@
       "clientNonce": "88888888888888888888888888888888",
       "serverNonce": "99999999999999999999999999999999",
       "sessionKey": "63c28824170361f87072c9e474442deed444fce32c0caf6a9731f7e99775f374",
+      "serverCommitNonce": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "clientCommitNonce": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "serverCommit": "fc3acd2c5dee7ac13b1bd84213e0c901dda64ca7936ed11735af3959c94a9cfa",
+      "clientCommit": "ae2da520ed484988dbf4de3d667164f4c386b5b7d7c3c7d0a073149b533727b5",
       "bytes": ""
+    },
+    {
+      "name": "pair_req_v2",
+      "type": "pairReq",
+      "deviceId": "66666666666666666666666666666666",
+      "clientPub": "7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13",
+      "deviceName": "Pixel 9",
+      "bytes": "50010301666666666666666666666666666666667b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f1307506978656c2039"
+    },
+    {
+      "name": "pair_resp_v2",
+      "type": "pairResp",
+      "status": 0,
+      "serverPub": "0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20",
+      "serverCommit": "fc3acd2c5dee7ac13b1bd84213e0c901dda64ca7936ed11735af3959c94a9cfa",
+      "bytes": "50010401000faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20fc3acd2c5dee7ac13b1bd84213e0c901dda64ca7936ed11735af3959c94a9cfa"
+    },
+    {
+      "name": "pair_commit",
+      "type": "pairCommit",
+      "deviceId": "66666666666666666666666666666666",
+      "clientCommit": "ae2da520ed484988dbf4de3d667164f4c386b5b7d7c3c7d0a073149b533727b5",
+      "bytes": "5001090066666666666666666666666666666666ae2da520ed484988dbf4de3d667164f4c386b5b7d7c3c7d0a073149b533727b5"
+    },
+    {
+      "name": "pair_reveal",
+      "type": "pairReveal",
+      "status": 0,
+      "serverConfirm": "646ed1eac87cabaf16a5166fb954ad330d174ded6846eb30f035b0f58315474d",
+      "serverNonce": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bytes": "50010a0000646ed1eac87cabaf16a5166fb954ad330d174ded6846eb30f035b0f58315474daaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "pair_confirm_v2",
+      "type": "pairConfirm",
+      "deviceId": "66666666666666666666666666666666",
+      "clientConfirm": "ff1f879c5f807bd872a82215c3a181b34d7eb9a9e015d369333d1d96fbfccff1",
+      "clientNonce": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "bytes": "5001070166666666666666666666666666666666ff1f879c5f807bd872a82215c3a181b34d7eb9a9e015d369333d1d96fbfccff1bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
     }
   ]
 }

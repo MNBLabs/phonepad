@@ -2,13 +2,18 @@
 import Base from "../layouts/Base.astro";
 import Controller from "../components/Controller.astro";
 import Support from "../components/Support.astro";
-import { DOWNLOAD_APK, REPO, MEASURED } from "../consts";
+import { DOWNLOAD_APK, REPO, MEASURED, VERSION_SHORT } from "../consts";
 ---
 
 <Base>
   <section class="hero-section">
     <div class="wrap hero">
       <div class="hero-copy">
+        <a class="release-pill" href="/whats-new/">
+          <span class="release-tag">New in {VERSION_SHORT}</span>
+          <span>Hotspot and USB tethering</span>
+          <span aria-hidden="true">→</span>
+        </a>
         <h1>No controller?<br />Use your phone.</h1>
         <p class="lede">
           PhonePad turns an Android phone into a wireless Xbox-compatible
@@ -72,11 +77,20 @@ import { DOWNLOAD_APK, REPO, MEASURED } from "../consts";
           </p>
         </li>
         <li>
-          <h3>Nothing leaves your network</h3>
+          <h3>No router needed</h3>
+          <p>
+            Turn on the phone's hotspot and connect the PC to it, or plug in and
+            use USB tethering. PhonePad finds the PC either way, and the
+            companion tells you if Windows is blocking it on that network.
+          </p>
+        </li>
+        <li>
+          <h3>Your controller stays on your network</h3>
           <p>
             No account, no server, no telemetry. The phone talks to your PC
-            directly over your own Wi-Fi, and every packet is authenticated so
-            nothing else on the network can inject input.
+            directly, and every packet is authenticated so nothing else on the
+            network can inject input. Pairing is built so the code cannot be
+            guessed offline.
           </p>
         </li>
       </ul>

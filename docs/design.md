@@ -139,6 +139,27 @@ The product's own voice, already established: plain, short, a little dry.
 "Pair", "Play"). Errors say what is wrong and what to do. No exclamation
 marks, no "seamless", no "unleash".
 
+## Advertising
+
+One strip, at the bottom, on paper surfaces only. It is a slot of the layout
+(`Scaffold.bottomNavigationBar` on the phone, a bottom panel in the companion),
+not something drawn over content, so a screen's content always ends above it
+and scrolls.
+
+- **Where:** the phone's home, layouts and settings screens; the companion
+  window. Never on night surfaces: the controller and its pause menu are where
+  hands are busy. Never in the editor or on the first-run pages.
+- **How it looks:** `raised` ground, one `line` hairline on top, nothing else.
+  No shadow, no label of our own over an ad (the ad carries its own disclosure),
+  and the house or sponsor placement says "Sponsored" or "From the maker".
+- **How big:** the standard anchored banner height plus 8 px, and never more
+  than 12% of the usable height. Where even a 50 dp banner would not fit inside
+  that (a phone in landscape), there is no strip at all. On the phone it also
+  clears the gesture area, because Samsung's gesture navigation reports no
+  inset there.
+- **When there is no ad**, the same space carries PhonePad's own placement, at
+  the same height, so nothing jumps and nothing is ever an empty box.
+
 ## What is not in the system
 
 No gradient text. No glassmorphism. No cards inside cards. No colour-coded

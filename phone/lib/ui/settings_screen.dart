@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../app_controller.dart';
+import '../core/ads.dart';
 import '../core/demo.dart';
 import '../core/links.dart';
 import '../platform/phonepad_platform.dart';
+import 'ad_strip.dart';
 import 'theme.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -23,6 +25,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
+      bottomNavigationBar: const AdStrip(),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
         children: [
@@ -125,11 +128,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Device ID',
                         '${demoOr(c.data.deviceId, kDemoDeviceId).substring(0, 8)}…',
                       ),
-                      StatRow('Protocol', 'PhonePad v1 (binary UDP)'),
+                      StatRow('Protocol', 'PhonePad v1, pairing v2'),
                       const SizedBox(height: 8),
                       const Text(
                         'The PC needs the PhonePad companion running. Pairing uses '
-                        'X25519 with a six-digit code, and every input packet is '
+                        'X25519 with a six-digit code, exchanged so that each side '
+                        'commits before the other reveals anything, which means the '
+                        'code cannot be guessed offline. Every input packet is '
                         'authenticated, so no other device on the network can inject '
                         'controller input.',
                         style: TextStyle(
@@ -142,6 +147,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
 
+                const SizedBox(height: 32),
+                ListenableBuilder(
+                  listenable: Ads.instance,
+                  builder: (context, _) => Panel(
+                    title: 'Ads',
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'One ad strip at the bottom of the setup screens pays for '
+                          'PhonePad. There are never ads on the controller. The '
+                          'controller itself only ever talks to your PC.',
+                          style: TextStyle(
+                            color: kInk2,
+                            fontSize: 12.5,
+                            height: 1.45,
+                          ),
+                        ),
+                        if (Ads.instance.privacyOptionsRequired) ...[
+                          const SizedBox(height: 14),
+                          OutlinedButton.icon(
+                            onPressed: Ads.instance.showPrivacyOptions,
+                            icon: const Icon(Icons.privacy_tip_outlined, size: 18),
+                            label: const Text('Ad privacy choices'),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
                 const SizedBox(height: 32),
                 Panel(
                   title: 'Support',

@@ -14,6 +14,14 @@ export const DOWNLOAD_APK = `${REPO}/releases/latest/download/PhonePad-arm64.apk
 export const DOWNLOAD_COMPANION = `${REPO}/releases/latest/download/PhonePad-Companion.exe`;
 export const DOWNLOAD_SUMS = `${REPO}/releases/latest/download/SHA256SUMS.txt`;
 export const ISSUES = `${REPO}/issues`;
+
+/** The release the site describes. Change with every release, with the
+ * "What's new" page, in the same commit. */
+export const VERSION = "1.1.0";
+export const VERSION_SHORT = "1.1";
+export const RELEASE_DATE = "9 November 2026";
+export const RELEASE_NOTES = `${REPO}/releases/tag/v${VERSION}`;
+export const CHANGELOG = `${REPO}/blob/main/CHANGELOG.md`;
 export const DISCUSSIONS = `${REPO}/discussions`;
 export const VIGEM = "https://github.com/nefarius/ViGEmBus/releases/tag/v1.22.0";
 
@@ -46,7 +54,7 @@ export const KOFI = import.meta.env.PUBLIC_KOFI_URL ?? "";
  */
 export const CONTROLLER = "DynShift";
 export const CONTACT = "official@dynshift.com";
-export const POLICY_DATE = "30 September 2026";
+export const POLICY_DATE = "9 November 2026";
 
 /** Where the people behind the project are, for the footer. */
 export const AUTHOR = "Nishan Bhuinya";
