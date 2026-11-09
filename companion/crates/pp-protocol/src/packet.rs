@@ -499,17 +499,32 @@ pub fn decode_discover_resp(buf: &[u8]) -> Result<DiscoverResp, DecodeError> {
 }
 
 // --- PAIRING -----------------------------------------------------------------
+//
+// Pairing v2: commit, then reveal, on both sides. See `protocol/PROTOCOL.md`
+// § Pairing for why v1 was replaced. Every v2 message that shares a type code
+// with v1 carries `PAIR_FLAG_COMMIT` in the header flags, so each side can tell
+// an outdated peer apart from a malformed packet and refuse it by name rather
+// than fall back. There is deliberately no fallback: an attacker could always
+// ask for the weaker scheme.
+
+/// Header flag on PAIR_REQ, PAIR_RESP and PAIR_CONFIRM: the sender speaks
+/// pairing v2.
+pub const PAIR_FLAG_COMMIT: u8 = 0x01;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PairReq {
     pub device_id: DeviceId,
     pub client_pub: [u8; 32],
     pub name: String,
+    /// False only for a phone running PhonePad 1.0, which the companion
+    /// recognises in order to say "update the app" instead of failing silently.
+    pub commit_scheme: bool,
 }
 
 pub fn encode_pair_req(p: &PairReq) -> Vec<u8> {
     let mut out = vec![0u8; 52];
-    put_header(&mut out, msg::PAIR_REQ, 0);
+    let flags = if p.commit_scheme { PAIR_FLAG_COMMIT } else { 0 };
+    put_header(&mut out, msg::PAIR_REQ, flags);
     out[4..20].copy_from_slice(&p.device_id);
     out[20..52].copy_from_slice(&p.client_pub);
     write_name(&mut out, &p.name);
@@ -528,6 +543,7 @@ pub fn decode_pair_req(buf: &[u8]) -> Result<PairReq, DecodeError> {
         device_id,
         client_pub,
         name,
+        commit_scheme: buf[3] & PAIR_FLAG_COMMIT != 0,
     })
 }
 
@@ -553,19 +569,26 @@ impl PairStatus {
 
 pub const PAIR_RESP_LEN: usize = 69;
 
+/// The PC's half of the key exchange, and a commitment to its proof of the
+/// code. The proof itself is withheld until the phone has committed to its
+/// own, which is what stops a client from testing guesses against it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PairResp {
     pub status: PairStatus,
     pub server_pub: [u8; 32],
-    pub server_confirm: [u8; 32],
+    /// v2: `commitment(server_confirm, server_nonce)`. In a v1 reply this
+    /// position held the confirmation tag itself.
+    pub server_commit: [u8; 32],
+    pub commit_scheme: bool,
 }
 
 pub fn encode_pair_resp(p: &PairResp) -> [u8; PAIR_RESP_LEN] {
     let mut out = [0u8; PAIR_RESP_LEN];
-    put_header(&mut out, msg::PAIR_RESP, 0);
+    let flags = if p.commit_scheme { PAIR_FLAG_COMMIT } else { 0 };
+    put_header(&mut out, msg::PAIR_RESP, flags);
     out[4] = p.status as u8;
     out[5..37].copy_from_slice(&p.server_pub);
-    out[37..69].copy_from_slice(&p.server_confirm);
+    out[37..69].copy_from_slice(&p.server_commit);
     out
 }
 
@@ -574,40 +597,117 @@ pub fn decode_pair_resp(buf: &[u8]) -> Result<PairResp, DecodeError> {
     let status = PairStatus::from_u8(buf[4]).ok_or(DecodeError::BadField("status"))?;
     let mut server_pub = [0u8; 32];
     server_pub.copy_from_slice(&buf[5..37]);
-    let mut server_confirm = [0u8; 32];
-    server_confirm.copy_from_slice(&buf[37..69]);
+    let mut server_commit = [0u8; 32];
+    server_commit.copy_from_slice(&buf[37..69]);
     Ok(PairResp {
         status,
         server_pub,
-        server_confirm,
+        server_commit,
+        commit_scheme: buf[3] & PAIR_FLAG_COMMIT != 0,
     })
 }
 
-pub const PAIR_CONFIRM_LEN: usize = 52;
+pub const PAIR_COMMIT_LEN: usize = 52;
 
+/// The phone's commitment to its proof of the code, sent before the PC reveals
+/// anything that depends on the code.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PairCommit {
+    pub device_id: DeviceId,
+    pub client_commit: [u8; 32],
+}
+
+pub fn encode_pair_commit(p: &PairCommit) -> [u8; PAIR_COMMIT_LEN] {
+    let mut out = [0u8; PAIR_COMMIT_LEN];
+    put_header(&mut out, msg::PAIR_COMMIT, 0);
+    out[4..20].copy_from_slice(&p.device_id);
+    out[20..52].copy_from_slice(&p.client_commit);
+    out
+}
+
+pub fn decode_pair_commit(buf: &[u8]) -> Result<PairCommit, DecodeError> {
+    check(buf, msg::PAIR_COMMIT, PAIR_COMMIT_LEN)?;
+    let mut device_id = [0u8; 16];
+    device_id.copy_from_slice(&buf[4..20]);
+    let mut client_commit = [0u8; 32];
+    client_commit.copy_from_slice(&buf[20..52]);
+    Ok(PairCommit {
+        device_id,
+        client_commit,
+    })
+}
+
+pub const PAIR_REVEAL_LEN: usize = 53;
+
+/// The PC opens its commitment. `status` is `Rejected` when this attempt was
+/// superseded (another attempt consumed the code first) or never existed, and
+/// `NotInPairingMode` when pairing stopped in between.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PairReveal {
+    pub status: PairStatus,
+    pub server_confirm: [u8; 32],
+    pub server_nonce: [u8; 16],
+}
+
+pub fn encode_pair_reveal(p: &PairReveal) -> [u8; PAIR_REVEAL_LEN] {
+    let mut out = [0u8; PAIR_REVEAL_LEN];
+    put_header(&mut out, msg::PAIR_REVEAL, 0);
+    out[4] = p.status as u8;
+    out[5..37].copy_from_slice(&p.server_confirm);
+    out[37..53].copy_from_slice(&p.server_nonce);
+    out
+}
+
+pub fn decode_pair_reveal(buf: &[u8]) -> Result<PairReveal, DecodeError> {
+    check(buf, msg::PAIR_REVEAL, PAIR_REVEAL_LEN)?;
+    let status = PairStatus::from_u8(buf[4]).ok_or(DecodeError::BadField("status"))?;
+    let mut server_confirm = [0u8; 32];
+    server_confirm.copy_from_slice(&buf[5..37]);
+    let mut server_nonce = [0u8; 16];
+    server_nonce.copy_from_slice(&buf[37..53]);
+    Ok(PairReveal {
+        status,
+        server_confirm,
+        server_nonce,
+    })
+}
+
+pub const PAIR_CONFIRM_LEN: usize = 68;
+
+/// The phone opens its commitment, having verified the PC's.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PairConfirm {
     pub device_id: DeviceId,
     pub client_confirm: [u8; 32],
+    pub client_nonce: [u8; 16],
 }
 
 pub fn encode_pair_confirm(p: &PairConfirm) -> [u8; PAIR_CONFIRM_LEN] {
     let mut out = [0u8; PAIR_CONFIRM_LEN];
-    put_header(&mut out, msg::PAIR_CONFIRM, 0);
+    put_header(&mut out, msg::PAIR_CONFIRM, PAIR_FLAG_COMMIT);
     out[4..20].copy_from_slice(&p.device_id);
     out[20..52].copy_from_slice(&p.client_confirm);
+    out[52..68].copy_from_slice(&p.client_nonce);
     out
 }
 
+/// Only the v2 form is accepted. A 52-byte v1 confirmation could never match a
+/// pending attempt anyway, because v1 requests are refused before one exists.
 pub fn decode_pair_confirm(buf: &[u8]) -> Result<PairConfirm, DecodeError> {
     check(buf, msg::PAIR_CONFIRM, PAIR_CONFIRM_LEN)?;
+    if buf[3] & PAIR_FLAG_COMMIT == 0 {
+        return Err(DecodeError::BadField("pairing v1 confirmation"));
+    }
     let mut device_id = [0u8; 16];
     device_id.copy_from_slice(&buf[4..20]);
     let mut client_confirm = [0u8; 32];
     client_confirm.copy_from_slice(&buf[20..52]);
+    let mut client_nonce = [0u8; 16];
+    client_nonce.copy_from_slice(&buf[52..68]);
     Ok(PairConfirm {
         device_id,
         client_confirm,
+        client_nonce,
     })
 }
 
@@ -905,23 +1005,47 @@ mod tests {
 
     #[test]
     fn pairing_messages_round_trip() {
-        let req = PairReq {
-            device_id: [5u8; 16],
-            client_pub: [6u8; 32],
-            name: "phone".into(),
-        };
-        assert_eq!(decode_pair_req(&encode_pair_req(&req)).unwrap(), req);
+        for commit_scheme in [false, true] {
+            let req = PairReq {
+                device_id: [5u8; 16],
+                client_pub: [6u8; 32],
+                name: "phone".into(),
+                commit_scheme,
+            };
+            assert_eq!(decode_pair_req(&encode_pair_req(&req)).unwrap(), req);
 
-        let resp = PairResp {
-            status: PairStatus::Ok,
-            server_pub: [7u8; 32],
-            server_confirm: [8u8; 32],
+            let resp = PairResp {
+                status: PairStatus::Ok,
+                server_pub: [7u8; 32],
+                server_commit: [8u8; 32],
+                commit_scheme,
+            };
+            assert_eq!(decode_pair_resp(&encode_pair_resp(&resp)).unwrap(), resp);
+        }
+
+        let commit = PairCommit {
+            device_id: [5u8; 16],
+            client_commit: [10u8; 32],
         };
-        assert_eq!(decode_pair_resp(&encode_pair_resp(&resp)).unwrap(), resp);
+        assert_eq!(
+            decode_pair_commit(&encode_pair_commit(&commit)).unwrap(),
+            commit
+        );
+
+        let reveal = PairReveal {
+            status: PairStatus::Ok,
+            server_confirm: [11u8; 32],
+            server_nonce: [12u8; 16],
+        };
+        assert_eq!(
+            decode_pair_reveal(&encode_pair_reveal(&reveal)).unwrap(),
+            reveal
+        );
 
         let conf = PairConfirm {
             device_id: [5u8; 16],
             client_confirm: [9u8; 32],
+            client_nonce: [13u8; 16],
         };
         assert_eq!(
             decode_pair_confirm(&encode_pair_confirm(&conf)).unwrap(),
@@ -932,6 +1056,24 @@ mod tests {
             decode_pair_result(&encode_pair_result(PairStatus::CodeMismatch)).unwrap(),
             PairStatus::CodeMismatch
         );
+    }
+
+    #[test]
+    fn a_v1_pairing_confirmation_is_refused() {
+        // PhonePad 1.0's confirmation: 52 bytes, no commit flag.
+        let mut v1 = [0u8; 52];
+        put_header(&mut v1, msg::PAIR_CONFIRM, 0);
+        assert!(decode_pair_confirm(&v1).is_err());
+
+        // The v2 length without the flag is refused too, so the flag cannot be
+        // dropped to reach some older code path.
+        let mut unflagged = encode_pair_confirm(&PairConfirm {
+            device_id: [1u8; 16],
+            client_confirm: [2u8; 32],
+            client_nonce: [3u8; 16],
+        });
+        unflagged[3] = 0;
+        assert!(decode_pair_confirm(&unflagged).is_err());
     }
 
     #[test]

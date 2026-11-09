@@ -5,6 +5,11 @@
 /// tuning — they arrive as one implementation of this interface rather than as
 /// `isPro` checks scattered through the screens.
 ///
+/// Connecting is never an entitlement. Wi-Fi, the phone's hotspot and USB
+/// tethering are how the controller reaches the PC at all, so none of them
+/// appears here, in any build: a controller that cannot connect is not a
+/// cheaper product, it is a broken one.
+///
 /// The open-source build uses [FreeEntitlements], which grants everything that
 /// exists today. A feature only appears here once there is something to gate;
 /// listing hypothetical ones would be advertising for a product that does not

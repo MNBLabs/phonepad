@@ -64,9 +64,34 @@ jobs:
           keyPassword=${{ secrets.ANDROID_KEY_PASSWORD }}
           KEY
 
+      # Ads are configuration, not source: the AdMob app id and banner unit id
+      # are repository variables. With neither set the app ships with its own
+      # placement in the ad strip and never starts the ad SDK. One without the
+      # other, or Google's published test ids, must never reach a release.
       - name: Build APK
         working-directory: phone
-        run: flutter build apk --release --target-platform android-arm64
+        shell: bash
+        env:
+          PHONEPAD_ADMOB_APP_ID: ${{ vars.ADMOB_APP_ID }}
+          ADMOB_BANNER_ID: ${{ vars.ADMOB_BANNER_ID }}
+        run: |
+          have_app=$([ -n "$PHONEPAD_ADMOB_APP_ID" ] && echo 1 || echo 0)
+          have_unit=$([ -n "$ADMOB_BANNER_ID" ] && echo 1 || echo 0)
+          if [ "$have_app" != "$have_unit" ]; then
+            echo "::error::set both ADMOB_APP_ID and ADMOB_BANNER_ID, or neither"
+            exit 1
+          fi
+          case "$PHONEPAD_ADMOB_APP_ID$ADMOB_BANNER_ID" in
+            *3940256099942544*) echo "::error::Google's test ad ids must not ship"; exit 1 ;;
+          esac
+          if [ -n "$ADMOB_BANNER_ID" ]; then
+            echo "Building with ads."
+            flutter build apk --release --target-platform android-arm64 \
+              --dart-define=PHONEPAD_ADMOB_BANNER_ID="$ADMOB_BANNER_ID"
+          else
+            echo "No AdMob ids configured: building without ads."
+            flutter build apk --release --target-platform android-arm64
+          fi
 
       # apksigner rather than keytool: the APK carries a v2 signature only, and
       # keytool cannot read those, so a check based on it would pass anything.

@@ -15,6 +15,14 @@ val keystoreProperties = Properties().apply {
 }
 val hasReleaseKey = keystoreProperties.containsKey("storeFile")
 
+// AdMob's application id: the repository variable ADMOB_APP_ID, passed in by
+// the release workflow. Anyone else's build gets Google's documented sample id,
+// which the SDK needs only so that it does not abort at start-up; without a
+// banner unit id (PHONEPAD_ADMOB_BANNER_ID) the app never initialises ads.
+val admobAppId: String = System.getenv("PHONEPAD_ADMOB_APP_ID")
+    ?.takeIf { it.isNotBlank() }
+    ?: "ca-app-pub-3940256099942544~3347511713"
+
 android {
     namespace = "dev.phonepad.phonepad"
     compileSdk = flutter.compileSdkVersion
@@ -35,6 +43,7 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        manifestPlaceholders["admobAppId"] = admobAppId
     }
 
     signingConfigs {

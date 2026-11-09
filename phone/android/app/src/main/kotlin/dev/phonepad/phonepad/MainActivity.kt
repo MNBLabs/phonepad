@@ -3,7 +3,7 @@ package dev.phonepad.phonepad
 import android.content.Context
 import android.graphics.Rect
 import android.net.ConnectivityManager
-import android.net.LinkAddress
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.os.Bundle
 import android.os.VibrationEffect
@@ -14,6 +14,7 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.net.Inet4Address
+import java.net.NetworkInterface
 
 /**
  * The native half of PhonePad.
@@ -22,12 +23,15 @@ import java.net.Inet4Address
  * docs/ADR-001-architecture.md) because a platform-channel hop per packet would
  * *add* latency, not remove it. What is here is the set of things Dart genuinely
  * cannot reach: display refresh rate, the Wi-Fi latency lock, system gesture
- * exclusion, crisp haptics, and the subnet broadcast address.
+ * exclusion, crisp haptics, and the local networks discovery has to reach.
  */
 class MainActivity : FlutterActivity() {
 
     private companion object {
         const val CHANNEL = "dev.phonepad/platform"
+
+        /** Interface names that are never a local network a PC could be on. */
+        val CARRIER_PREFIXES = listOf("rmnet", "ccmni", "v4-", "clat", "tun", "ppp", "dummy", "ifb")
     }
 
     private var wifiLock: android.net.wifi.WifiManager.WifiLock? = null
@@ -45,7 +49,7 @@ class MainActivity : FlutterActivity() {
                 try {
                     when (call.method) {
                         "getDeviceName" -> result.success(deviceName())
-                        "getLinkInfo" -> result.success(linkInfo())
+                        "getLocalNetworks" -> result.success(localNetworks())
                         "setKeepAwake" -> {
                             setKeepAwake(call.argument<Boolean>("on") ?: false)
                             result.success(null)
@@ -197,41 +201,102 @@ class MainActivity : FlutterActivity() {
     }
 
     /**
-     * The phone's IPv4 address and its subnet broadcast address.
+     * Every local IPv4 link a PC could be on, with its subnet broadcast address.
      *
-     * Dart's NetworkInterface does not expose prefix lengths, and some access
-     * points drop 255.255.255.255 while still forwarding a subnet-directed
-     * broadcast. Discovery sends to both, so it needs this.
+     * Discovery used to ask only about `activeNetwork`. When the phone is the
+     * hotspot, or shares its connection over USB, the PC sits on a tethering
+     * interface that is never the active network: that is the carrier's. So the
+     * probe went out over mobile data and the PC never heard it (issue #2).
+     *
+     * The kernel keeps a `broadcast <subnet>.255` route for every interface in
+     * its local table, so a subnet-directed broadcast always leaves on the link
+     * it names, whichever network is the default; and Android routes app traffic
+     * to tethered clients through its local-network table, so the PC's unicast
+     * replies and the session that follows work too.
+     *
+     * Cellular and VPN links are left out by transport, not by address: a
+     * carrier commonly hands out private 10.x addresses, and announcing the
+     * phone's name to the carrier's network helps nobody.
      */
-    private fun linkInfo(): Map<String, Any?> {
+    @Suppress("DEPRECATION")
+    private fun localNetworks(): Map<String, Any?> {
         val cm = applicationContext.getSystemService(Context.CONNECTIVITY_SERVICE)
-            as? ConnectivityManager ?: return emptyMap()
+            as? ConnectivityManager
 
-        val network = cm.activeNetwork ?: return emptyMap()
-        val props = cm.getLinkProperties(network) ?: return emptyMap()
+        val excluded = mutableSetOf<String>()
+        val wifi = mutableSetOf<String>()
+        val ethernet = mutableSetOf<String>()
+        var defaultKind = "none"
 
-        for (la: LinkAddress in props.linkAddresses) {
-            val addr = la.address
-            if (addr !is Inet4Address || addr.isLoopbackAddress) continue
-            return mapOf(
-                "address" to addr.hostAddress,
-                "prefixLength" to la.prefixLength,
-                "broadcast" to broadcastFor(addr, la.prefixLength),
-                "interface" to (props.interfaceName ?: "")
-            )
+        if (cm != null) {
+            val active = cm.activeNetwork
+            for (network in cm.allNetworks) {
+                val caps = cm.getNetworkCapabilities(network) ?: continue
+                val name = cm.getLinkProperties(network)?.interfaceName ?: continue
+                val kind = when {
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_VPN) -> "vpn"
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) -> "cellular"
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) -> "wifi"
+                    caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) -> "ethernet"
+                    else -> "other"
+                }
+                when (kind) {
+                    "vpn", "cellular" -> excluded += name
+                    "wifi" -> wifi += name
+                    "ethernet" -> ethernet += name
+                }
+                if (network == active) defaultKind = kind
+            }
         }
-        return emptyMap()
+
+        val out = mutableListOf<Map<String, Any?>>()
+        val interfaces = try {
+            NetworkInterface.getNetworkInterfaces()?.toList().orEmpty()
+        } catch (e: Exception) {
+            emptyList()
+        }
+        for (ni in interfaces) {
+            val name = ni.name ?: continue
+            val usable = try {
+                ni.isUp && !ni.isLoopback && !ni.isPointToPoint && !ni.isVirtual
+            } catch (e: Exception) {
+                false
+            }
+            if (!usable || name in excluded) continue
+            // Belt and braces for links that are not exposed as a Network at
+            // all: modem data links, the 464xlat CLAT interface, tunnels.
+            if (CARRIER_PREFIXES.any { name.startsWith(it) }) continue
+
+            for (ia in ni.interfaceAddresses) {
+                val addr = ia.address as? Inet4Address ?: continue
+                val broadcast = ia.broadcast as? Inet4Address ?: continue
+                if (addr.isLoopbackAddress || addr.isLinkLocalAddress) continue
+                if (ia.networkPrefixLength !in 8..30) continue
+                out += mapOf(
+                    "interface" to name,
+                    "address" to addr.hostAddress,
+                    "prefixLength" to ia.networkPrefixLength.toInt(),
+                    "broadcast" to broadcast.hostAddress,
+                    "kind" to kindOf(name, wifi, ethernet)
+                )
+            }
+        }
+        return mapOf("networks" to out, "defaultKind" to defaultKind)
     }
 
-    private fun broadcastFor(addr: Inet4Address, prefixLength: Int): String? {
-        if (prefixLength !in 1..31) return null
-        val bytes = addr.address
-        var value = 0L
-        for (b in bytes) value = (value shl 8) or (b.toLong() and 0xFF)
-        val hostMask = (1L shl (32 - prefixLength)) - 1
-        val broadcast = value or hostMask
-        return listOf(24, 16, 8, 0).joinToString(".") { ((broadcast shr it) and 0xFF).toString() }
-    }
+    private fun kindOf(name: String, wifi: Set<String>, ethernet: Set<String>): String =
+        when {
+            name in wifi -> "wifi"
+            name in ethernet -> "ethernet"
+            // Tethering interfaces are named by the driver, not by any API.
+            // These are the names AOSP and the major vendors use.
+            name.startsWith("rndis") || name.startsWith("ncm") ||
+                name.startsWith("usb") -> "usb"
+            name.startsWith("bt-pan") || name.startsWith("bt") -> "bluetooth"
+            name.startsWith("swlan") || name.startsWith("ap") ||
+                name.startsWith("softap") || name.startsWith("wlan") -> "hotspot"
+            else -> "other"
+        }
 
     // --- haptics ---------------------------------------------------------------
 

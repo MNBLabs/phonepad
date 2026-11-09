@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'app_controller.dart';
+import 'core/ads.dart';
 import 'ui/home_screen.dart';
 import 'ui/onboarding_screen.dart';
 import 'ui/theme.dart';
@@ -15,6 +16,10 @@ Future<void> main() async {
 
   final controller = await AppController.create();
   runApp(PhonePadApp(controller: controller));
+
+  // After the first frame: the consent form, where one is required, needs a
+  // running activity. In a build without ads this returns at once.
+  WidgetsBinding.instance.addPostFrameCallback((_) => Ads.instance.start());
 }
 
 class PhonePadApp extends StatefulWidget {

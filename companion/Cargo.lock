@@ -2367,16 +2367,19 @@ dependencies = [
 
 [[package]]
 name = "pp-companion"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "eframe",
  "pp-core",
  "pp-protocol",
+ "serde",
+ "serde_json",
+ "windows 0.61.3",
 ]
 
 [[package]]
 name = "pp-core"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "pp-protocol",
  "serde",
@@ -2387,14 +2390,14 @@ dependencies = [
 
 [[package]]
 name = "pp-fakephone"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "pp-protocol",
 ]
 
 [[package]]
 name = "pp-protocol"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "hkdf",
  "hmac",
@@ -2406,7 +2409,7 @@ dependencies = [
 
 [[package]]
 name = "pp-vigem-probe"
-version = "0.1.0"
+version = "1.1.0"
 dependencies = [
  "vigem-client",
  "windows-sys 0.59.0",

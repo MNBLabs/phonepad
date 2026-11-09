@@ -5,6 +5,11 @@
 /// code binds the exchange to the two public keys, so a device sniffing the LAN
 /// cannot substitute its own key and sit in the middle.
 ///
+/// Six digits only stay secret if nobody can test guesses offline, so each
+/// side commits to its proof of the code before the other reveals one (pairing
+/// v2; see protocol/PROTOCOL.md). The phone never reveals its proof until the
+/// PC has opened a commitment it made before it could have learned the code.
+///
 /// The resulting 32-byte token is derived independently on both sides and is
 /// **never transmitted**.
 library;
@@ -63,6 +68,49 @@ class PairingSecrets {
   /// Our proof to the PC that we know the same code.
   Uint8List clientConfirm(Uint8List clientPub, Uint8List serverPub, String code) =>
       _confirm('pp-cli', clientPub, serverPub, code);
+}
+
+/// `SHA-256(label || tag || nonce)`. Hiding while the nonce is secret; binding
+/// because a commitment made without the code cannot later open to a proof of
+/// it.
+Uint8List _commitment(String label, List<int> tag, List<int> nonce) =>
+    Uint8List.fromList(
+      sha256.convert(<int>[...utf8.encode(label), ...tag, ...nonce]).bytes,
+    );
+
+/// The PC's commitment, carried in PAIR_RESP.
+Uint8List serverCommitment(List<int> serverConfirm, List<int> nonce) =>
+    _commitment('pp-commit-srv', serverConfirm, nonce);
+
+/// The phone's commitment, carried in PAIR_COMMIT.
+Uint8List clientCommitment(List<int> clientConfirm, List<int> nonce) =>
+    _commitment('pp-commit-cli', clientConfirm, nonce);
+
+/// Whether the PC's reveal proves it knew the code before it saw anything of
+/// ours: it must open the commitment from PAIR_RESP, and the opened proof must
+/// be the one for the code the user typed. Only then may the phone reveal its
+/// own proof; revealing it to anything else would hand over the code.
+bool serverRevealIsValid({
+  required Uint8List serverCommit,
+  required Uint8List revealedConfirm,
+  required Uint8List revealedNonce,
+  required Uint8List expectedConfirm,
+}) {
+  final opens = _constantTimeEquals(
+    serverCommitment(revealedConfirm, revealedNonce),
+    serverCommit,
+  );
+  final proves = _constantTimeEquals(revealedConfirm, expectedConfirm);
+  return opens && proves;
+}
+
+bool _constantTimeEquals(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  var diff = 0;
+  for (var i = 0; i < a.length; i++) {
+    diff |= a[i] ^ b[i];
+  }
+  return diff == 0;
 }
 
 /// One side's X25519 keypair for a pairing exchange.

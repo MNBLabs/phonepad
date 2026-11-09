@@ -32,6 +32,10 @@ pub mod msg {
     pub const SESSION_RESP: u8 = 0x06;
     pub const PAIR_CONFIRM: u8 = 0x07;
     pub const PAIR_RESULT: u8 = 0x08;
+    /// Pairing v2: the phone commits to its proof of the code.
+    pub const PAIR_COMMIT: u8 = 0x09;
+    /// Pairing v2: the PC opens its commitment.
+    pub const PAIR_REVEAL: u8 = 0x0A;
     pub const INPUT: u8 = 0x10;
     pub const FEEDBACK: u8 = 0x11;
     pub const BYE: u8 = 0x12;

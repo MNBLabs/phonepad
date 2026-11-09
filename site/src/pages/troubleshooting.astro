@@ -6,15 +6,19 @@ import { ISSUES, VIGEM } from "../consts";
 const faq = [
   {
     q: "My PC does not appear in the app",
-    a: "Almost always one of three things: the companion is not running, the two devices are on different networks, or Windows Firewall is blocking it.",
+    a: "Almost always one of three things: the companion is not running, the two devices are on different networks, or Windows Firewall is blocking it. The companion shows it if Windows is blocking PhonePad, on which network, and how to fix it.",
   },
   {
     q: "Windows sees the pad but the game ignores it",
     a: "The game was started before the controller existed. Hold the XBOX button on the phone for a second to re-attach the pad, which produces the arrival event the game was waiting for.",
   },
   {
+    q: "Can I use my phone's hotspot or USB tethering?",
+    a: "Yes. Connect the PC to the phone's hotspot, or turn on USB tethering, and open PhonePad. Windows treats a new network as public and blocks PhonePad there; the companion offers to mark that one network private.",
+  },
+  {
     q: "The pairing code is not accepted",
-    a: "The pairing window is open for 120 seconds and closes on the first successful pairing. Click 'Pair a phone' on the PC to open a fresh one.",
+    a: "Each code is good for one attempt: after a wrong one the PC shows a new code. The window closes after 120 seconds, on the first successful pairing, or after five attempts. Click 'Pair a phone' on the PC to open a fresh one.",
   },
   {
     q: "The controls feel laggy",
@@ -55,16 +59,19 @@ const schema = {
           open. It is not a service and does not start with Windows.
         </li>
         <li>
-          <strong>Are both devices on the same Wi-Fi?</strong> Not the same
+          <strong>Are both devices on the same network?</strong> Not the same
           building — the same network. A phone on a 5 GHz guest network and a PC
           on a 2.4 GHz main network cannot see each other, and neither can a
-          phone that has quietly fallen back to mobile data.
+          phone that has quietly fallen back to mobile data. The phone's own
+          hotspot or USB tethering counts: see below.
         </li>
         <li>
-          <strong>Is the firewall blocking it?</strong> Open
-          <em>Advanced</em> → <em>Network</em> in the companion. If the firewall
-          rule is missing, click <em>Add firewall rule</em> and accept the
-          elevation prompt.
+          <strong>Is Windows blocking it?</strong> If it is, the companion
+          window says so under <em>Windows is blocking PhonePad</em>, names the
+          network, and offers the fix. <em>Advanced</em> → <em>Network</em>
+          lists every network the PC is on, whether PhonePad is open on it, and
+          how many search probes from phones it has heard: none means the
+          phone's search never reaches the PC.
         </li>
       </ol>
       <p>
@@ -72,6 +79,31 @@ const schema = {
         "client isolation" turned on, which stops devices on the network from
         talking to each other at all. It is often on by default on guest
         networks. Turn it off, or use your main network.
+      </p>
+
+      <h2>Using the phone's hotspot or USB tethering</h2>
+      <p>
+        It works: connect the PC to the phone's hotspot, or turn on USB
+        tethering, and open PhonePad. The phone searches every network it is
+        part of, including the ones it is providing.
+      </p>
+      <p>
+        What gets in the way is Windows. It files every network it has not
+        seen before as <em>public</em>, and blocks phones from reaching
+        PhonePad there. The companion shows the network under
+        <em>Windows is blocking PhonePad</em>; if it is your own phone,
+        click <strong>Make private</strong> and accept the administrator
+        prompt. That trusts that one network, the way Windows' own
+        <em>Network profile type</em> setting does, and nothing else.
+      </p>
+      <p>
+        A Wi-Fi hotspot is remembered by its name. With USB tethering, many
+        phones present a new network identity each time tethering starts, so
+        Windows may treat it as new and the companion will ask again.
+      </p>
+      <p>
+        Do not mark café, hotel or airport Wi-Fi private. PhonePad never opens
+        its ports on public networks in general, for the same reason.
       </p>
 
       <h2>Windows sees the pad but the game ignores it</h2>
@@ -109,9 +141,17 @@ const schema = {
 
       <h2>The pairing code is not accepted</h2>
       <p>
-        The pairing window is open for <strong>120 seconds</strong> and closes
-        the moment a phone pairs successfully. If it has expired, click
-        <em>Pair a phone</em> on the PC for a fresh code.
+        Each code is good for <strong>one attempt</strong>. After a wrong one
+        the PC shows a new code; type that one. The pairing window is open for
+        <strong>120 seconds</strong> and closes the moment a phone pairs, or
+        after five attempts. Click <em>Pair a phone</em> on the PC for a fresh
+        window.
+      </p>
+      <p>
+        "This PC has an older PhonePad" or, on the PC, "has an older PhonePad
+        that pairs insecurely": pairing needs 1.1 or newer on both sides.
+        Update whichever one is named. A phone that was already paired keeps
+        working.
       </p>
       <p>
         If the phone says the PC is not in pairing mode, that is the PC

@@ -4,7 +4,7 @@ publish_to: 'none'
 
 # The build number after `+` must increase on every release or Android refuses
 # the upgrade.
-version: 1.0.0+1
+version: 1.1.0+2
 
 environment:
   sdk: ^3.12.2
@@ -15,6 +15,7 @@ dependencies:
   crypto: ^3.0.7
   cryptography: ^2.9.0
   path_provider: ^2.1.6
+  google_mobile_ads: ^9.2.0
 
 dev_dependencies:
   flutter_test:

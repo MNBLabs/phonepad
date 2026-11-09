@@ -11,11 +11,13 @@ import 'package:flutter/services.dart';
 import '../app_controller.dart';
 import '../core/demo.dart';
 import '../core/net/connection.dart';
+import '../platform/phonepad_platform.dart';
 import 'diagnostics_screen.dart';
 import 'layouts_screen.dart';
 import 'mark.dart';
 import 'play_screen.dart';
 import 'settings_screen.dart';
+import 'ad_strip.dart';
 import 'theme.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -179,6 +181,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+      bottomNavigationBar: const AdStrip(),
       body: RefreshIndicator(
         onRefresh: _search,
         child: ListView(
@@ -199,7 +202,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (_searching && discovered.isEmpty)
                     const _Searching()
                   else if (discovered.isEmpty)
-                    _NothingFound(onRetry: _search)
+                    _NothingFound(onRetry: _search, link: c.link)
                   else ...[
                     for (final pc in discovered) ...[
                       _PcTile(
@@ -225,11 +228,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Column(
                       children: [
                         StatRow('Device', c.data.deviceName),
-                        StatRow(
-                          'Wi-Fi address',
-                          demoOr(c.link.address ?? 'unknown', kDemoAddress),
-                          color: c.link.isUsable ? kInk : kWarn,
-                        ),
+                        if (c.link.networks.isEmpty)
+                          const StatRow(
+                            'Network',
+                            'No Wi-Fi or hotspot',
+                            color: kWarn,
+                          )
+                        else
+                          for (final n in c.link.networks)
+                            StatRow(
+                              n.kind.label,
+                              demoOr(n.address, kDemoAddress),
+                            ),
                         StatRow(
                           'Display',
                           '${c.display.refreshRate.round()} Hz '
@@ -324,12 +334,17 @@ class _Searching extends StatelessWidget {
 /// things that are actually ever wrong, in the order they are worth checking.
 /// A spinner that quietly stops tells the user nothing they can act on.
 class _NothingFound extends StatelessWidget {
-  const _NothingFound({required this.onRetry});
+  const _NothingFound({required this.onRetry, required this.link});
 
   final VoidCallback onRetry;
+  final LinkInfo link;
 
   @override
   Widget build(BuildContext context) {
+    final sharing = link.networks.any((n) =>
+        n.kind == NetworkKind.hotspot ||
+        n.kind == NetworkKind.usb ||
+        n.kind == NetworkKind.bluetooth);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -338,10 +353,28 @@ class _NothingFound extends StatelessWidget {
         const SizedBox(height: 16),
         const _Check('Is the PhonePad companion running on your PC?'),
         const Hairline(),
-        const _Check('Are both devices on the same Wi-Fi network?'),
+        if (link.networks.isEmpty)
+          const _Check(
+            'This phone is not on Wi-Fi and is not sharing a hotspot. '
+            'Join the same Wi-Fi as the PC, or turn on the hotspot and '
+            'connect the PC to it.',
+          )
+        else
+          const _Check(
+            "Is the PC on the same Wi-Fi, or connected to this phone's "
+            'hotspot or USB tethering?',
+          ),
         const Hairline(),
-        const _Check(
-          'Did Windows Firewall ask to allow it? It needs private networks.',
+        // A network Windows has not seen before is filed as public, and its
+        // firewall blocks PhonePad there. A phone's hotspot always starts out
+        // that way, so say so where it applies.
+        _Check(
+          sharing
+              ? 'Windows treats a new hotspot as a public network and blocks '
+                  'PhonePad on it. The PhonePad window on the PC offers to '
+                  'trust it.'
+              : 'Did Windows Firewall ask to allow PhonePad? The PhonePad '
+                  'window on the PC says if it is being blocked.',
         ),
         const SizedBox(height: 22),
         Align(

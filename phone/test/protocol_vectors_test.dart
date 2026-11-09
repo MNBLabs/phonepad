@@ -151,6 +151,42 @@ void main() {
             sessionKey: unhex(c['sessionKey'] as String),
           );
 
+        case 'pairReq':
+          actual = encodePairReq(
+            deviceId: unhex(c['deviceId'] as String),
+            clientPub: unhex(c['clientPub'] as String),
+            name: c['deviceName'] as String,
+          );
+
+        case 'pairResp':
+          // Encoded by the PC; the phone only decodes it.
+          final resp = decodePairResp(expected);
+          expect(resp.status, PairStatus.ok, reason: name);
+          expect(resp.commitScheme, isTrue, reason: name);
+          expect(hex(resp.serverPub), c['serverPub'], reason: name);
+          expect(hex(resp.serverCommit), c['serverCommit'], reason: name);
+          actual = expected;
+
+        case 'pairCommit':
+          actual = encodePairCommit(
+            deviceId: unhex(c['deviceId'] as String),
+            clientCommit: unhex(c['clientCommit'] as String),
+          );
+
+        case 'pairReveal':
+          final reveal = decodePairReveal(expected);
+          expect(reveal.status, PairStatus.ok, reason: name);
+          expect(hex(reveal.serverConfirm), c['serverConfirm'], reason: name);
+          expect(hex(reveal.serverNonce), c['serverNonce'], reason: name);
+          actual = expected;
+
+        case 'pairConfirm':
+          actual = encodePairConfirm(
+            deviceId: unhex(c['deviceId'] as String),
+            clientConfirm: unhex(c['clientConfirm'] as String),
+            clientNonce: unhex(c['clientNonce'] as String),
+          );
+
         case 'pairing':
           // Not a wire-format case; covered byte-for-byte in
           // pairing_crypto_test.dart against the same fixture.

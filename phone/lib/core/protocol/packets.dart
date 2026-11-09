@@ -26,6 +26,10 @@ abstract final class Msg {
   static const int sessionResp = 0x06;
   static const int pairConfirm = 0x07;
   static const int pairResult = 0x08;
+  /// Pairing v2: the phone commits to its proof of the code.
+  static const int pairCommit = 0x09;
+  /// Pairing v2: the PC opens its commitment.
+  static const int pairReveal = 0x0A;
   static const int input = 0x10;
   static const int feedback = 0x11;
   static const int bye = 0x12;
@@ -74,8 +78,15 @@ const int kByeLen = 16;
 const int kSessionReqLen = 44;
 const int kSessionRespLen = 33;
 const int kPairRespLen = 69;
-const int kPairConfirmLen = 52;
+const int kPairCommitLen = 52;
+const int kPairRevealLen = 53;
+const int kPairConfirmLen = 68;
 const int kPairResultLen = 5;
+
+/// Header flag on PAIR_REQ, PAIR_RESP and PAIR_CONFIRM: the sender speaks
+/// pairing v2. A PC that answers without it is PhonePad 1.0, whose pairing
+/// gives the code away, so the phone refuses to continue rather than fall back.
+const int kPairFlagCommit = 0x01;
 const int kMaxNameLen = 64;
 
 /// Truncated HMAC-SHA256 tag, as carried on the wire.
@@ -550,7 +561,7 @@ Uint8List encodePairReq({
   final nameBytes = _encodeName(name);
   // 4 header + 16 id + 32 pubkey + 1 length + n name
   final buf = Uint8List(53 + nameBytes.length);
-  _putHeader(ByteData.sublistView(buf), Msg.pairReq, 0);
+  _putHeader(ByteData.sublistView(buf), Msg.pairReq, kPairFlagCommit);
   buf.setRange(4, 20, deviceId);
   buf.setRange(20, 52, clientPub);
   buf[52] = nameBytes.length;
@@ -572,15 +583,22 @@ enum PairStatus {
   }
 }
 
+/// The PC's half of the key exchange, and a commitment to its proof of the
+/// code. The proof itself only arrives in [PairReveal], after the phone has
+/// committed to its own.
 class PairResp {
   final PairStatus status;
   final Uint8List serverPub;
-  final Uint8List serverConfirm;
+  final Uint8List serverCommit;
+
+  /// False when the PC is PhonePad 1.0.
+  final bool commitScheme;
 
   const PairResp({
     required this.status,
     required this.serverPub,
-    required this.serverConfirm,
+    required this.serverCommit,
+    required this.commitScheme,
   });
 }
 
@@ -589,18 +607,53 @@ PairResp decodePairResp(Uint8List buf) {
   return PairResp(
     status: PairStatus.fromByte(buf[4]),
     serverPub: Uint8List.fromList(buf.sublist(5, 37)),
-    serverConfirm: Uint8List.fromList(buf.sublist(37, 69)),
+    serverCommit: Uint8List.fromList(buf.sublist(37, 69)),
+    commitScheme: buf[3] & kPairFlagCommit != 0,
+  );
+}
+
+Uint8List encodePairCommit({
+  required Uint8List deviceId,
+  required Uint8List clientCommit,
+}) {
+  final buf = Uint8List(kPairCommitLen);
+  _putHeader(ByteData.sublistView(buf), Msg.pairCommit, 0);
+  buf.setRange(4, 20, deviceId);
+  buf.setRange(20, 52, clientCommit);
+  return buf;
+}
+
+class PairReveal {
+  final PairStatus status;
+  final Uint8List serverConfirm;
+  final Uint8List serverNonce;
+
+  const PairReveal({
+    required this.status,
+    required this.serverConfirm,
+    required this.serverNonce,
+  });
+}
+
+PairReveal decodePairReveal(Uint8List buf) {
+  _checkHeader(buf, Msg.pairReveal, kPairRevealLen);
+  return PairReveal(
+    status: PairStatus.fromByte(buf[4]),
+    serverConfirm: Uint8List.fromList(buf.sublist(5, 37)),
+    serverNonce: Uint8List.fromList(buf.sublist(37, 53)),
   );
 }
 
 Uint8List encodePairConfirm({
   required Uint8List deviceId,
   required Uint8List clientConfirm,
+  required Uint8List clientNonce,
 }) {
   final buf = Uint8List(kPairConfirmLen);
-  _putHeader(ByteData.sublistView(buf), Msg.pairConfirm, 0);
+  _putHeader(ByteData.sublistView(buf), Msg.pairConfirm, kPairFlagCommit);
   buf.setRange(4, 20, deviceId);
   buf.setRange(20, 52, clientConfirm);
+  buf.setRange(52, 68, clientNonce);
   return buf;
 }
 

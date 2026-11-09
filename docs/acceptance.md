@@ -1,6 +1,6 @@
 # Acceptance checklist
 
-Status as of 2026-09-13. "Verified" means it was actually exercised on the real
+Status as of 2026-11-09 (1.1.0); the 1.0.0 results below still stand. "Verified" means it was actually exercised on the real
 S24 Ultra and the real PC and the result observed — not that the code looks
 right.
 
@@ -8,8 +8,8 @@ right.
 
 | Suite | Count | Status |
 |---|---|---|
-| `cargo test --workspace` | 71 | pass |
-| `flutter test` | 84 | pass |
+| `cargo test --workspace` | 95 | pass |
+| `flutter test` | 99 | pass |
 
 Notable coverage, because line counts say little:
 
@@ -28,7 +28,45 @@ Notable coverage, because line counts say little:
 - **Multi-touch.** Including the classic bug where two fingers on one button and
   releasing one wrongly clears it.
 
-## Manual — verified
+- **Pairing attacks (1.1.0).** The loopback suite plays the attacker against a
+  live core: the 1.0 offline brute force finds nothing in a v2 reply; a code
+  learned by committing garbage has already been retired; a reveal cancels
+  every other attempt in flight; pairing stops after five attempts; a 1.0
+  request is refused by name. Before the fix the same brute force recovered the
+  code from a 1.0.0 core in 174 ms.
+- **Discovery targets (1.1.0).** Which addresses a probe goes to, tested against
+  the exact links the S24 Ultra reported while tethering (mobile data on a
+  private 10.x address as the default network).
+- **Firewall verdicts (1.1.0).** Block rules beating allow rules, rules scoped
+  to one adapter, every port required, read back through a real `VARIANT`.
+- **Ad strip (1.1.0).** House placement without an ad unit, never under the
+  content, clear of the gesture area, absent in landscape on a phone.
+
+## Manual — verified for 1.1.0
+
+On the Galaxy S24 Ultra (Android 17) and the Windows 11 PC, which has no Wi-Fi
+adapter, so tethering was exercised over USB; the Wi-Fi hotspot shares the
+same code path on the phone and was not run with a Wi-Fi client.
+
+| # | Check | Result |
+|---|---|---|
+| 1 | Issue #2 reproduced with the shipped 1.0.0 app and companion | USB tethering, phone Wi-Fi off: "No PC found" |
+| 2 | Phone finds the PC over USB tethering, broadcast only | Found in about 1 s with no stored address; link shown as "USB tethering" |
+| 3 | Session over the tether | Connected, 3.0 to 3.8 ms round trip |
+| 4 | Input reaches Windows over the tether | XInput slot 0: A pressed `0x1000`, released `0x0000` |
+| 5 | Tethering switched off and on mid-session | Reconnected by itself on a fresh socket (1.0.0 sat on "reconnecting") |
+| 6 | Windows blocking PhonePad on a public network | A fresh install answered "Private only" got public block rules; the companion flagged the tether network, offered **Make private**; after the UAC prompt the network was private, the private rule present, and the phone connected. The home LAN was untouched |
+| 7 | USB tethering gets a new network identity per session | The phone's tethering MAC changed between sessions; Windows named the network anew; the companion says so |
+| 8 | Pairing v2, right code | Paired and connected on the shipping builds |
+| 9 | Pairing v2, wrong code | Phone refused to reveal its proof and said so; PC replaced the code and named the attempt |
+| 10 | 1.0.0 phone → 1.1.0 companion | Refused; companion: "has an older PhonePad that pairs insecurely" |
+| 11 | 1.1.0 phone → 1.0.0 companion | Refused; phone: "This PC has an older PhonePad. Update the companion" |
+| 12 | A phone paired under 1.0 against the 1.1 companion | Connects; sessions unchanged |
+| 13 | Ad strip with Google's test unit | Banner on home, layouts and settings; never on the controller; clear of the gesture hint; none in landscape |
+| 14 | Release build without an ad unit | House placement in the strip; no ad SDK log output |
+| 15 | Companion sponsor strip, site file absent | House placement shown; nothing blocked |
+
+## Manual — verified for 1.0.0
 
 | # | Check | Result |
 |---|---|---|

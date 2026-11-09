@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "placements": [
+    {
+      "label": "From the maker",
+      "title": "PhonePad is free and open source",
+      "body": "This strip keeps it that way. You can also chip in directly.",
+      "action": "Support PhonePad",
+      "url": "https://phonepad.dynshift.com/support/"
+    },
+    {
+      "label": "From the maker",
+      "title": "LAYR: build websites deterministically",
+      "body": "A compiled UI language for the web, from the studio that makes PhonePad.",
+      "action": "See LAYR",
+      "url": "https://layr.dynshift.com/"
+    }
+  ]
+}

@@ -14,7 +14,9 @@ use std::io::Write;
 use std::net::{SocketAddr, ToSocketAddrs, UdpSocket};
 use std::time::{Duration, Instant};
 
-use pp_protocol::crypto::{ct_eq32, PairingKeys};
+use pp_protocol::crypto::{
+    client_commitment, ct_eq32, random_bytes, server_commitment, PairingKeys,
+};
 use pp_protocol::*;
 
 struct Args {
@@ -359,6 +361,7 @@ fn pair(sock: &UdpSocket, addr: SocketAddr, code: &str) -> Result<Token, String>
         device_id: DEVICE_ID,
         client_pub: keys.public,
         name: "pp-fakephone".to_string(),
+        commit_scheme: true,
     };
     sock.send_to(&encode_pair_req(&req), addr)
         .map_err(|e| format!("pair send failed: {e}"))?;
@@ -369,19 +372,45 @@ fn pair(sock: &UdpSocket, addr: SocketAddr, code: &str) -> Result<Token, String>
     if resp.status != PairStatus::Ok {
         return Err(format!("companion refused pairing: {:?}", resp.status));
     }
+    if !resp.commit_scheme {
+        return Err("the companion is PhonePad 1.0; update it to pair".into());
+    }
 
     let secrets = keys.agree(&resp.server_pub, &DEVICE_ID);
-    // Check the PC knew the code before we commit to anything.
-    if !ct_eq32(
+    let client_confirm = secrets.client_confirm(&keys.public, &resp.server_pub, code);
+    let nonce = random_bytes::<16>();
+    let commit = PairCommit {
+        device_id: DEVICE_ID,
+        client_commit: client_commitment(&client_confirm, &nonce),
+    };
+    sock.send_to(&encode_pair_commit(&commit), addr)
+        .map_err(|e| format!("commit send failed: {e}"))?;
+
+    let (raw, _) = recv_typed(sock, msg::PAIR_REVEAL, Duration::from_secs(5))
+        .ok_or("no pairing reveal from the companion")?;
+    let reveal = decode_pair_reveal(&raw).map_err(|e| format!("bad pairing reveal: {e}"))?;
+    if reveal.status != PairStatus::Ok {
+        return Err(format!("companion refused pairing: {:?}", reveal.status));
+    }
+
+    // Reveal our proof only once the PC has proved it knew the code, with the
+    // proof it committed to before it saw anything of ours.
+    let opens = ct_eq32(
+        &server_commitment(&reveal.server_confirm, &reveal.server_nonce),
+        &resp.server_commit,
+    );
+    let proves = ct_eq32(
         &secrets.server_confirm(&keys.public, &resp.server_pub, code),
-        &resp.server_confirm,
-    ) {
+        &reveal.server_confirm,
+    );
+    if !(opens && proves) {
         return Err("wrong code, or someone is interfering with the pairing exchange".into());
     }
 
     let confirm = PairConfirm {
         device_id: DEVICE_ID,
-        client_confirm: secrets.client_confirm(&keys.public, &resp.server_pub, code),
+        client_confirm,
+        client_nonce: nonce,
     };
     sock.send_to(&encode_pair_confirm(&confirm), addr)
         .map_err(|e| format!("confirm send failed: {e}"))?;

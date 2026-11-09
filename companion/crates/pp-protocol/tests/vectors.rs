@@ -192,8 +192,75 @@ fn committed_vectors_still_match() {
                     c["sessionKey"],
                     "{name}: sessionKey"
                 );
+                assert_eq!(
+                    hexstr(&crypto::server_commitment(
+                        &ss.server_confirm(&client.public, &server.public, code),
+                        &arr16(c, "serverCommitNonce")
+                    )),
+                    c["serverCommit"],
+                    "{name}: serverCommit"
+                );
+                assert_eq!(
+                    hexstr(&crypto::client_commitment(
+                        &cs.client_confirm(&client.public, &server.public, code),
+                        &arr16(c, "clientCommitNonce")
+                    )),
+                    c["clientCommit"],
+                    "{name}: clientCommit"
+                );
                 checked += 1;
                 continue;
+            }
+            "pairReq" => {
+                let p = PairReq {
+                    device_id: arr16(c, "deviceId"),
+                    client_pub: key32(c, "clientPub"),
+                    name: c["deviceName"].as_str().unwrap().to_string(),
+                    commit_scheme: true,
+                };
+                let buf = encode_pair_req(&p);
+                assert_eq!(decode_pair_req(&buf).unwrap(), p);
+                buf
+            }
+            "pairResp" => {
+                let p = PairResp {
+                    status: PairStatus::from_u8(c["status"].as_u64().unwrap() as u8).unwrap(),
+                    server_pub: key32(c, "serverPub"),
+                    server_commit: key32(c, "serverCommit"),
+                    commit_scheme: true,
+                };
+                let buf = encode_pair_resp(&p);
+                assert_eq!(decode_pair_resp(&buf).unwrap(), p);
+                buf.to_vec()
+            }
+            "pairCommit" => {
+                let p = PairCommit {
+                    device_id: arr16(c, "deviceId"),
+                    client_commit: key32(c, "clientCommit"),
+                };
+                let buf = encode_pair_commit(&p);
+                assert_eq!(decode_pair_commit(&buf).unwrap(), p);
+                buf.to_vec()
+            }
+            "pairReveal" => {
+                let p = PairReveal {
+                    status: PairStatus::from_u8(c["status"].as_u64().unwrap() as u8).unwrap(),
+                    server_confirm: key32(c, "serverConfirm"),
+                    server_nonce: arr16(c, "serverNonce"),
+                };
+                let buf = encode_pair_reveal(&p);
+                assert_eq!(decode_pair_reveal(&buf).unwrap(), p);
+                buf.to_vec()
+            }
+            "pairConfirm" => {
+                let p = PairConfirm {
+                    device_id: arr16(c, "deviceId"),
+                    client_confirm: key32(c, "clientConfirm"),
+                    client_nonce: arr16(c, "clientNonce"),
+                };
+                let buf = encode_pair_confirm(&p);
+                assert_eq!(decode_pair_confirm(&buf).unwrap(), p);
+                buf.to_vec()
             }
             other => panic!("{name}: unknown vector type {other}"),
         };

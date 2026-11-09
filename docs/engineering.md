@@ -66,6 +66,12 @@ sequence counters, so neither stream can invalidate the other's replay state.
 `protocol/vectors.json` is generated from fixed keys and is byte-stable; if it
 changes, both codecs must change with it, and CI checks that it is not stale.
 
+**Pairing.** No message may let a peer test a guess at the code offline: each
+side commits before the other reveals, the PC retires the code on every reveal,
+and the phone reveals last. Do not "simplify" PAIR_RESP back to carrying the
+proof; that is exactly the 1.0.0 vulnerability, and the loopback tests that play
+the attacker will fail. There is no v1 fallback, on purpose.
+
 **Touch.** `TouchRouter` rebuilds the whole controller state from the set of
 live pointers on every event. It never toggles incrementally. That is what makes
 a stuck button structurally impossible, and it is worth preserving.
@@ -122,6 +128,33 @@ be run again.
 - The default `flutter_test` surface is 800x600. A widget wider than that has
   its right-hand side off-screen and never hit-tested, which reads as a
   multi-touch failure that is really a viewport.
+- Discovery has to probe every local link, not `activeNetwork`. When the phone
+  is the hotspot or shares its data over USB, the PC is on a tethering
+  interface that is never the default network, and `255.255.255.255` follows
+  the default network out over mobile data. Carriers hand out private 10.x
+  addresses, so cellular has to be excluded by transport, not by address.
+- On Android 17 (S24 Ultra), when USB tethering was torn down and re-created
+  mid-session, the app's existing UDP socket kept *sending* but never received
+  another datagram, while a newly bound one worked at once. The reconnect loop
+  rebinds from its second attempt for that reason.
+- Windows identifies a wired network by its gateway's MAC. Phones that
+  randomise the USB tethering MAC (the S24 does, every session) show up as a
+  new public "Network N" each time, so "make it private" does not stick for USB
+  tethering the way it does for a Wi-Fi hotspot.
+- Answering Windows' first-run firewall prompt with only "Private" ticked
+  writes a **block** rule for public networks, and block rules win over allow
+  rules, so no extra allow rule (even one scoped to an adapter) gets PhonePad
+  through on a public network. Only changing the network's category does.
+- `Get-NetConnectionProfile` and the other `root\StandardCimv2` cmdlets fail
+  with "Invalid namespace" on some machines, including the development PC.
+  Network List Manager and the firewall policy are read through COM instead.
+- Samsung's gesture navigation reports a **zero** navigation-bar inset and
+  draws its hint over the app, so `SafeArea` alone puts a bottom strip on the
+  home-swipe zone. The ad strip also clears `systemGestureInsets.bottom`.
+- The release workflow's AdMob ids are repository variables; a build without
+  them has no ad unit and never starts the ad SDK (the SDK no longer
+  auto-initialises from a content provider, which was checked in the merged
+  manifest).
 - Samsung's launcher does not parallax adaptive icons, but others do: the icon's
   foreground layer is the whole designed tile and the background is only its
   edge continued outward, so any parallax reveals more field rather than a

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../app_controller.dart';
 import '../model/layout.dart';
 import 'editor_screen.dart';
+import 'ad_strip.dart';
 import 'theme.dart';
 
 class LayoutsScreen extends StatefulWidget {
@@ -86,6 +87,7 @@ class _LayoutsScreenState extends State<LayoutsScreen> {
     final active = c.activeLayout;
 
     return Scaffold(
+      bottomNavigationBar: const AdStrip(),
       appBar: AppBar(title: const Text('Layouts')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),

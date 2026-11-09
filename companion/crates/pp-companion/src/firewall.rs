@@ -40,34 +40,38 @@ pub fn rule_state() -> RuleState {
     }
 }
 
-/// Adds an inbound allow rule for both ports. Requires elevation, so this
-/// triggers a UAC prompt; the user is told that up front by the button label.
-pub fn add_rule(discovery_port: u16, input_port: u16) -> Result<(), String> {
-    let args = format!(
-        "advfirewall firewall add rule name=\"\"{RULE_NAME}\"\" dir=in action=allow \
-         protocol=UDP localport={discovery_port},{input_port} profile=private,domain"
-    );
-
-    let script = format!(
-        "$p = Start-Process -FilePath netsh -ArgumentList '{args}' -Verb RunAs -Wait -PassThru; \
-         exit $p.ExitCode"
-    );
-
-    let out = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+/// Adds PhonePad's inbound rule for both ports on **private and domain**
+/// networks only. Must already be running elevated; the window gets there
+/// through `elevate::run_self_elevated`.
+///
+/// Never `profile=any`. That was the change proposed for issue #2, and it would
+/// open the ports on every public network the PC ever joins: café, hotel and
+/// airport Wi-Fi, where anyone could reach the pairing window. A hotspot that
+/// is the user's own is made private instead (see netprofile.rs), which scopes
+/// the trust to that one network.
+pub fn add_rule_elevated(discovery_port: u16, input_port: u16) -> Result<(), String> {
+    if rule_state() == RuleState::Present {
+        return Ok(());
+    }
+    let out = Command::new("netsh")
+        .args([
+            "advfirewall",
+            "firewall",
+            "add",
+            "rule",
+            &format!("name={RULE_NAME}"),
+            "dir=in",
+            "action=allow",
+            "protocol=UDP",
+            &format!("localport={discovery_port},{input_port}"),
+            "profile=private,domain",
+        ])
         .creation_flags(CREATE_NO_WINDOW)
         .output()
-        .map_err(|e| format!("could not launch the elevation prompt: {e}"))?;
-
+        .map_err(|e| format!("could not run netsh: {e}"))?;
     if out.status.success() {
         Ok(())
     } else {
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        let detail = stderr.trim();
-        Err(if detail.is_empty() {
-            "the firewall rule was not added (the elevation prompt may have been declined)".into()
-        } else {
-            detail.to_string()
-        })
+        Err(String::from_utf8_lossy(&out.stdout).trim().to_string())
     }
 }

@@ -20,6 +20,10 @@ pub struct Counters {
     pub sessions_dropped: AtomicU64,
     pub neutralisations: AtomicU64,
     pub backend_errors: AtomicU64,
+    /// Discovery probes answered. When a phone says "No PC found", zero here
+    /// means its probes never arrived (network or firewall); a rising count
+    /// means they did and the reply is what gets lost.
+    pub discovery_requests: AtomicU64,
 }
 
 #[derive(Default, Debug)]
@@ -48,6 +52,7 @@ pub struct StatsSnapshot {
     pub sessions_dropped: u64,
     pub neutralisations: u64,
     pub backend_errors: u64,
+    pub discovery_requests: u64,
     pub pps: u32,
     pub loss_permille: u32,
     pub jitter_us: u32,
@@ -87,6 +92,7 @@ impl Stats {
             sessions_dropped: c.sessions_dropped.load(REL),
             neutralisations: c.neutralisations.load(REL),
             backend_errors: c.backend_errors.load(REL),
+            discovery_requests: c.discovery_requests.load(REL),
             pps: g.pps.load(REL),
             loss_permille: g.loss_permille.load(REL),
             jitter_us: g.jitter_us.load(REL),

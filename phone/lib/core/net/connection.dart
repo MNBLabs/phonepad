@@ -10,6 +10,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
+import '../../platform/phonepad_platform.dart';
 import '../protocol/packets.dart';
 import '../protocol/pairing_crypto.dart';
 import '../store.dart';
@@ -63,6 +64,23 @@ class LinkStats {
 const _feedbackTimeout = Duration(milliseconds: 900);
 const _reconnectInterval = Duration(seconds: 1);
 const _discoveryTimeout = Duration(milliseconds: 1200);
+
+/// Where a discovery probe goes.
+///
+/// * The subnet broadcast of every local link: the phone's Wi-Fi, and any
+///   network the phone itself is providing (hotspot, USB or Bluetooth
+///   tethering). Some access points drop 255.255.255.255 but forward these.
+/// * 255.255.255.255, only when the default network is local. Otherwise the
+///   kernel sends it over mobile data.
+/// * Each paired PC's last address, only when it falls inside one of those
+///   links, in case broadcast is filtered. A stale address from another network
+///   would otherwise go to the carrier too.
+Set<String> discoveryTargets(LinkInfo link, Iterable<String> lastAddresses) => {
+      for (final n in link.networks) n.broadcast,
+      if (link.defaultIsLocal) '255.255.255.255',
+      for (final a in lastAddresses)
+        if (link.networks.any((n) => n.contains(a))) a,
+    };
 
 class PhonePadConnection extends ChangeNotifier {
   PhonePadConnection(this._store);
@@ -136,6 +154,21 @@ class PhonePadConnection extends ChangeNotifier {
     return sock;
   }
 
+  /// Retries since the link went quiet. See [_housekeeping].
+  int _reconnectAttempts = 0;
+
+  /// Drop the socket so the next send binds a new one. Replies still awaited
+  /// on the old socket can no longer arrive, so release their waiters now
+  /// rather than leave them to time out.
+  void _rebindSocket() {
+    _socket?.close();
+    _socket = null;
+    for (final w in _waiters.values) {
+      if (!w.isCompleted) w.complete(Uint8List(0));
+    }
+    _waiters.clear();
+  }
+
   void _onSocketEvent(RawSocketEvent event) {
     if (event != RawSocketEvent.read) return;
     final sock = _socket;
@@ -183,11 +216,9 @@ class PhonePadConnection extends ChangeNotifier {
 
   // --- discovery ------------------------------------------------------------
 
-  /// Broadcast a probe and collect answers. [extraTargets] carries the
-  /// subnet-directed broadcast address from the platform channel, because some
-  /// access points drop 255.255.255.255.
+  /// Probe every local link and collect answers. See [discoveryTargets].
   Future<List<DiscoveredPc>> discover({
-    List<String> extraTargets = const [],
+    LinkInfo link = LinkInfo.empty,
     Duration timeout = _discoveryTimeout,
   }) async {
     final sock = await _ensureSocket();
@@ -200,12 +231,10 @@ class PhonePadConnection extends ChangeNotifier {
       name: _data.deviceName,
     );
 
-    final targets = <String>{
-      '255.255.255.255',
-      ...extraTargets,
-      // Anything we have reached before, in case broadcast is filtered.
-      ...(_data.pairedPcs.map((p) => p.lastAddress).whereType<String>()),
-    };
+    final targets = discoveryTargets(
+      link,
+      _data.pairedPcs.map((p) => p.lastAddress).whereType<String>(),
+    );
 
     for (final t in targets) {
       final addr = InternetAddress.tryParse(t);
@@ -251,8 +280,8 @@ class PhonePadConnection extends ChangeNotifier {
 
   // --- pairing --------------------------------------------------------------
 
-  /// Runs the full X25519 + code exchange. Returns null on success, or a
-  /// human-readable reason.
+  /// Runs the full X25519 + code exchange (pairing v2: commit, then reveal).
+  /// Returns null on success, or a human-readable reason.
   Future<String?> pair(DiscoveredPc pc, String code) async {
     final sock = await _ensureSocket();
     final deviceId = _data.deviceIdBytes;
@@ -287,21 +316,69 @@ class PhonePadConnection extends ChangeNotifier {
       case PairStatus.ok:
         break;
     }
+    // PhonePad 1.0 pairs in a way that gives the code away to the phone; never
+    // continue with it, or a rogue "PC" could simply ask for the old scheme.
+    if (!resp.commitScheme) {
+      return 'This PC has an older PhonePad. Update the companion to 1.1 or '
+          'newer, then pair again.';
+    }
 
     final secrets = await keys.agree(resp.serverPub, deviceId);
+    final clientConfirm =
+        secrets.clientConfirm(keys.publicKey, resp.serverPub, code);
+    final clientNonce = randomBytes(16);
 
-    // Verify the PC knew the code before we commit anything. This is what stops
-    // another device on the LAN from impersonating the PC.
-    final expected = secrets.serverConfirm(keys.publicKey, resp.serverPub, code);
-    if (!constantTimeEquals(expected, resp.serverConfirm)) {
-      return 'Wrong code — check the six digits shown on the PC.';
+    sock.send(
+      encodePairCommit(
+        deviceId: deviceId,
+        clientCommit: clientCommitment(clientConfirm, clientNonce),
+      ),
+      pc.address,
+      kDiscoveryPort,
+    );
+
+    final revealRaw =
+        await _awaitReply(Msg.pairReveal, const Duration(seconds: 5));
+    if (revealRaw == null) return 'The PC did not answer the pairing request.';
+
+    final PairReveal reveal;
+    try {
+      reveal = decodePairReveal(revealRaw);
+    } catch (e) {
+      return 'The PC sent a malformed pairing reply ($e).';
+    }
+    switch (reveal.status) {
+      case PairStatus.ok:
+        break;
+      case PairStatus.notInPairingMode:
+        return 'Pairing has stopped on the PC. Click "Pair a phone" on it '
+            'and try again.';
+      case PairStatus.codeMismatch:
+      case PairStatus.rejected:
+        // Another attempt used the code first; the PC has moved on to a new one.
+        return 'Something else tried to pair at the same moment. Enter the '
+            'new code shown on the PC.';
+    }
+
+    // Verify the PC knew the code, with a proof it committed to before it saw
+    // anything of ours. This is what stops another device on the network from
+    // impersonating the PC, and only after it may our own proof leave.
+    final valid = serverRevealIsValid(
+      serverCommit: resp.serverCommit,
+      revealedConfirm: reveal.serverConfirm,
+      revealedNonce: reveal.serverNonce,
+      expectedConfirm:
+          secrets.serverConfirm(keys.publicKey, resp.serverPub, code),
+    );
+    if (!valid) {
+      return 'Wrong code. The PC is now showing a new one; enter that.';
     }
 
     sock.send(
       encodePairConfirm(
         deviceId: deviceId,
-        clientConfirm:
-            secrets.clientConfirm(keys.publicKey, resp.serverPub, code),
+        clientConfirm: clientConfirm,
+        clientNonce: clientNonce,
       ),
       pc.address,
       kDiscoveryPort,
@@ -318,7 +395,7 @@ class PhonePadConnection extends ChangeNotifier {
     }
     if (status != PairStatus.ok) {
       return status == PairStatus.codeMismatch
-          ? 'Wrong code — check the six digits shown on the PC.'
+          ? 'Wrong code. The PC is now showing a new one; enter that.'
           : 'The PC refused pairing.';
     }
 
@@ -415,6 +492,7 @@ class PhonePadConnection extends ChangeNotifier {
     _controlSeq = 0;
     _lastEchoMs = -1;
     _lastFeedbackAt = DateTime.now();
+    _reconnectAttempts = 0;
     _setPhase(ConnectionPhase.connected);
     _startPumps();
     return true;
@@ -552,6 +630,7 @@ class PhonePadConnection extends ChangeNotifier {
     }
 
     if (_phase == ConnectionPhase.reconnecting) {
+      _reconnectAttempts = 0;
       _setPhase(ConnectionPhase.connected);
     }
   }
@@ -591,6 +670,15 @@ class PhonePadConnection extends ChangeNotifier {
     if (_phase == ConnectionPhase.reconnecting &&
         silence > _feedbackTimeout + _reconnectInterval) {
       _lastFeedbackAt = now; // rate-limit the retries
+      // From the second attempt on, start from a fresh socket. Measured on a
+      // Galaxy S24 Ultra (Android 17) sharing its data over USB: when the
+      // tethering interface was torn down and re-created mid-session, the
+      // existing socket kept *sending* (the PC saw every session request) but
+      // never received another datagram, so the phone sat on "reconnecting"
+      // indefinitely while a newly bound socket connected at once. A rebind is
+      // cheap and the PC follows the new port, because each session request
+      // opens a fresh session from wherever it came from.
+      if (_reconnectAttempts++ > 0) _rebindSocket();
       unawaited(_openSession());
     }
   }
