@@ -1,6 +1,6 @@
 ---
 import "../styles/global.css";
-import { SITE_NAME, DESCRIPTION, REPO, GA_ID, ADSENSE_CLIENT, AUTHOR, AUTHOR_GITHUB, AUTHOR_INSTAGRAM, DYNSHIFT, DYNSHIFT_INSTAGRAM, VERSION, VERSION_SHORT } from "../consts";
+import { SITE_NAME, DESCRIPTION, REPO, GA_ID, ADSENSE_CLIENT, AUTHOR, AUTHOR_GITHUB, AUTHOR_INSTAGRAM, DYNSHIFT, DYNSHIFT_INSTAGRAM, VERSION, VERSION_SHORT, RELEASES } from "../consts";
 
 interface Props {
   title?: string;
@@ -43,6 +43,12 @@ const schema = {
   isAccessibleForFree: true,
   offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
   softwareHelp: new URL("/troubleshooting/", Astro.site).href,
+  downloadUrl: RELEASES,
+  // Ties the name to this site and to its source for search engines; "PhonePad"
+  // is shared with unrelated products, and "phonepad github" is how many
+  // people look for it.
+  sameAs: [REPO],
+  publisher: { "@type": "Organization", name: "DynShift", url: DYNSHIFT },
 };
 ---
 

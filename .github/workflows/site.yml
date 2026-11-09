@@ -22,7 +22,12 @@ jobs:
     if: github.repository == 'MNBLabs/phonepad'
     runs-on: ubuntu-latest
     steps:
+      # Full history: each sitemap entry's <lastmod> is its page's last commit
+      # date (site/astro.config.mjs), and a shallow clone would date every page
+      # to the latest commit.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
