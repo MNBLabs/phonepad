@@ -2,10 +2,11 @@
 
 export const SITE_NAME = "PhonePad";
 export const TAGLINE = "No controller? Use your phone.";
+/** Search results show about 160 characters; keep it inside that. */
 export const DESCRIPTION =
-  "Turn your Android phone into a wireless Xbox-compatible controller for " +
-  "Windows over Wi-Fi. No Bluetooth, no cable, nothing to buy. Works with " +
-  "Xbox Cloud Gaming, Steam and Game Pass.";
+  "Use your Android phone as a wireless Xbox controller for Windows, over " +
+  "Wi-Fi or its own hotspot. Free. Works with Xbox Cloud Gaming, Steam and " +
+  "Game Pass.";
 
 export const REPO = "https://github.com/MNBLabs/phonepad";
 export const RELEASES = `${REPO}/releases/latest`;
